@@ -122,8 +122,8 @@
     const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb"; 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const TAGS = ['전체', '📌핀고정', '맛집', '여행_국내', '여행_해외', '촬영_노하우', '촬영_영상구성레퍼런스', '편집_영상레퍼런스', '편집_썸네일레퍼런스', '편집_꿀팁', '계정_레퍼런스', '계정_마케팅운영팁'];
-    const ALL_TAGS = TAGS.filter(t => t !== '전체' && t !== '📌핀고정');
+    const TAGS = ['전체', '맛집', '여행_국내', '여행_해외', '촬영_노하우', '촬영_영상구성레퍼런스', '편집_영상레퍼런스', '편집_썸네일레퍼런스', '편집_꿀팁', '계정_레퍼런스', '계정_마케팅운영팁'];
+    const ALL_TAGS = TAGS.filter(t => t !== '전체');
     let selectedTags = new Set(['전체']);
     let modalSelectedTags = new Set();
     let pastedFile = null;
@@ -188,7 +188,6 @@
       if (selectedIds.size === 0) return alert('삭제할 항목을 선택해주세요.');
       if (!confirm(`선택한 ${selectedIds.size}개 레퍼런스를 삭제할까요?`)) return;
 
-      // 양쪽 테이블 모두에서 선택 항목 삭제
       await supabaseClient.from('reference').delete().in('id', Array.from(selectedIds));
       await supabaseClient.from('references').delete().in('id', Array.from(selectedIds));
       
@@ -337,16 +336,14 @@
         }
       }
 
+      const payload = { title, link_url, memo, image_url, tags: Array.from(modalSelectedTags) };
+
       let error;
       if (editingId) {
-        const res = await supabaseClient.from('reference').update({
-          title, link_url, memo, image_url, tags: Array.from(modalSelectedTags)
-        }).eq('id', editingId);
+        const res = await supabaseClient.from('reference').update(payload).eq('id', editingId);
         error = res.error;
       } else {
-        const res = await supabaseClient.from('reference').insert([{
-          title, link_url, memo, image_url, tags: Array.from(modalSelectedTags)
-        }]);
+        const res = await supabaseClient.from('reference').insert([payload]);
         error = res.error;
       }
 
@@ -368,7 +365,6 @@
       loadData();
     }
 
-    // 두 데이터베이스 테이블을 모두 조회해서 하나로 합칩니다!
     async function loadData() {
       const req1 = supabaseClient.from('reference').select('*');
       const req2 = supabaseClient.from('references').select('*');
@@ -378,15 +374,11 @@
       const data1 = res1.data || [];
       const data2 = res2.data || [];
 
-      // 중복 및 결합 처리
       const combined = [...data1, ...data2];
       const uniqueMap = new Map();
       combined.forEach(item => uniqueMap.set(item.id, item));
 
-      cachedData = Array.from(uniqueMap.values()).sort((a, b) => {
-        if (a.is_pinned !== b.is_pinned) return b.is_pinned ? 1 : -1;
-        return new Date(b.created_at) - new Date(a.created_at);
-      });
+      cachedData = Array.from(uniqueMap.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       renderCards();
     }
@@ -396,7 +388,6 @@
 
       if (!selectedTags.has('전체')) {
         filteredData = filteredData.filter(item => {
-          if (selectedTags.has('📌핀고정') && item.is_pinned) return true;
           return Array.from(selectedTags).some(t => item.tags && item.tags.includes(t));
         });
       }
@@ -426,9 +417,6 @@
               </div>
             ` : `
               <div class="absolute top-2.5 right-2.5 z-10 flex gap-1">
-                <button onclick="event.stopPropagation(); togglePin('${item.id}', ${item.is_pinned})" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs">
-                  ${item.is_pinned ? '📌' : '📍'}
-                </button>
                 <button onclick="event.stopPropagation(); editReference('${item.id}')" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="수정">
                   ✏️
                 </button>
@@ -464,12 +452,6 @@
           </div>
         `;
       }).join('');
-    }
-
-    async function togglePin(id, current) {
-      await supabaseClient.from('reference').update({ is_pinned: !current }).eq('id', id);
-      await supabaseClient.from('references').update({ is_pinned: !current }).eq('id', id);
-      loadData();
     }
 
     renderTagFilters();
