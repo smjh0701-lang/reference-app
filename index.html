@@ -83,10 +83,20 @@
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">인스타 / 유튜브 / 웹 링크</label>
           <input type="url" id="inputLink" placeholder="https://instagram.com/..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
         </div>
+        
+        <!-- 이미지 첨부 및 Ctrl+V 박스 -->
         <div>
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">📸 피드 캡처 / 이미지 첨부 (추천)</label>
-          <input type="file" id="inputFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400 hover:file:bg-indigo-100 transition">
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">📸 이미지 첨부 (PC에서는 Ctrl+V 가능)</label>
+          <div id="pasteDropArea" class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 transition">
+            <input type="file" id="inputFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400">
+            <p class="text-[11px] text-indigo-500 font-medium mt-1">💡 캡처 후 이 팝업창에서 바로 <kbd class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">V</kbd> 하셔도 됩니다!</p>
+            <div id="pastePreview" class="mt-2 hidden">
+              <img id="previewImg" src="" class="max-h-32 mx-auto rounded-lg border shadow-sm">
+              <span class="text-[10px] text-green-600 dark:text-green-400 font-bold block mt-1">✓ 캡처 이미지가 붙여넣어졌습니다!</span>
+            </div>
+          </div>
         </div>
+
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">태그 선택</label>
           <div id="modalTags" class="flex flex-wrap gap-1.5"></div>
@@ -112,6 +122,29 @@
     const ALL_TAGS = TAGS.filter(t => t !== '전체' && t !== '📌핀고정');
     let selectedTags = new Set(['전체']);
     let modalSelectedTags = new Set();
+    let pastedFile = null;
+
+    // Ctrl+V 붙여넣기 이벤트 리스너
+    document.addEventListener('paste', function(e) {
+      const modal = document.getElementById('addModal');
+      if (modal.classList.contains('hidden')) return;
+
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (let item of items) {
+        if (item.type.indexOf('image') === 0) {
+          const blob = item.getAsFile();
+          pastedFile = blob;
+          
+          const reader = new FileReader();
+          reader.onload = function(event) {
+            document.getElementById('previewImg').src = event.target.result;
+            document.getElementById('pastePreview').classList.remove('hidden');
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    });
 
     function toggleFilterDrawer() {
       const drawer = document.getElementById('filterDrawer');
@@ -167,6 +200,8 @@
     function closeModal() {
       document.getElementById('addModal').classList.add('hidden');
       modalSelectedTags.clear();
+      pastedFile = null;
+      document.getElementById('pastePreview').classList.add('hidden');
     }
 
     function renderModalTags() {
@@ -195,11 +230,12 @@
       saveBtn.disabled = true;
 
       let image_url = null;
-      if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const fileExt = file.name.split('.').pop();
+      let targetFile = pastedFile || (fileInput.files.length > 0 ? fileInput.files[0] : null);
+
+      if (targetFile) {
+        const fileExt = targetFile.name ? targetFile.name.split('.').pop() : 'png';
         const fileName = `${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage.from('reference-images').upload(fileName, file);
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage.from('reference-images').upload(fileName, targetFile);
         if (!uploadError) {
           const { data: urlData } = supabaseClient.storage.from('reference-images').getPublicUrl(fileName);
           image_url = urlData.publicUrl;
@@ -251,7 +287,6 @@
       }
 
       grid.innerHTML = filteredData.map(item => {
-        // 이미지가 없을 때 링크가 있다면 썸네일 자동 생성 URL 활용
         let displayImg = item.image_url;
         if (!displayImg && item.link_url) {
           displayImg = `https://api.microlink.io/?url=${encodeURIComponent(item.link_url)}&embed=image.url`;
@@ -282,7 +317,7 @@
               ${item.link_url ? `
                 <a href="${item.link_url}" target="_blank" class="flex items-center justify-center gap-1 w-full text-center text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-2 rounded-xl font-semibold transition">
                   <span>링크 바로가기</span>
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                 </a>
               ` : ''}
             </div>
