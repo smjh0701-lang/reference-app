@@ -128,8 +128,8 @@
     const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb"; 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 새 요청 태그 반영
-    const TAGS = ['전체', '맛집_레퍼런스', '여행_레퍼런스', '맛집추천', '여행추천', '책추천', '촬영_노하우', '촬영_영상구성레퍼런스', '편집_영상레퍼런스', '편집_썸네일레퍼런스', '편집_꿀팁', '계정_레퍼런스', '계정_마케팅운영팁'];
+    // '영상글귀추천' 태그 추가 반영!
+    const TAGS = ['전체', '맛집_레퍼런스', '여행_레퍼런스', '맛집추천', '여행추천', '책추천', '영상글귀추천', '촬영_노하우', '촬영_영상구성레퍼런스', '편집_영상레퍼런스', '편집_썸네일레퍼런스', '편집_꿀팁', '계정_레퍼런스', '계정_마케팅운영팁'];
     const ALL_TAGS = TAGS.filter(t => t !== '전체');
     let selectedTags = new Set(['전체']);
     let modalSelectedTags = new Set();
@@ -195,7 +195,6 @@
       if (selectedIds.size === 0) return alert('삭제할 항목을 선택해주세요.');
       if (!confirm(`선택한 ${selectedIds.size}개 레퍼런스를 삭제할까요?`)) return;
 
-      // references 단일 테이블 삭제
       await supabaseClient.from('references').delete().in('id', Array.from(selectedIds));
       
       toggleSelectMode();
@@ -347,7 +346,6 @@
 
       let error;
       if (editingId) {
-        // 단일 DB 테이블 references만 정밀 조작!
         const res = await supabaseClient.from('references').update(payload).eq('id', editingId);
         error = res.error;
       } else {
