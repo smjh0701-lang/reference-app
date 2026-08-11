@@ -96,14 +96,13 @@
         </div>
         
         <div>
-          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">📸 이미지 첨부 (PC에서는 Ctrl+V 가능)</label>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">📸 이미지 여러 장 첨부 (PC Ctrl+V 가능)</label>
           <div id="pasteDropArea" class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 transition">
-            <input type="file" id="inputFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400">
-            <p class="text-[11px] text-indigo-500 font-medium mt-1">💡 캡처 후 이 팝업창에서 바로 <kbd class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">V</kbd> 하셔도 됩니다!</p>
-            <div id="pastePreview" class="mt-2 hidden">
-              <img id="previewImg" src="" class="max-h-32 mx-auto rounded-lg border shadow-sm">
-              <span class="text-[10px] text-green-600 dark:text-green-400 font-bold block mt-1">✓ 이미지가 선택/붙여넣어졌습니다!</span>
-            </div>
+            <input type="file" id="inputFile" accept="image/*" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400" onchange="handleFileSelect(event)">
+            <p class="text-[11px] text-indigo-500 font-medium mt-1">💡 여러 장을 동시에 고르거나 붙여넣을 수 있습니다!</p>
+            
+            <!-- 이미지 목록 및 대표 설정 영역 -->
+            <div id="imageManageArea" class="mt-3 flex gap-2 overflow-x-auto pb-2 no-scrollbar"></div>
           </div>
         </div>
 
@@ -128,17 +127,19 @@
     const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb"; 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // '영상글귀추천' 태그 추가 반영!
     const TAGS = ['전체', '맛집_레퍼런스', '여행_레퍼런스', '맛집추천', '여행추천', '책추천', '영상글귀추천', '촬영_노하우', '촬영_영상구성레퍼런스', '편집_영상레퍼런스', '편집_썸네일레퍼런스', '편집_꿀팁', '계정_레퍼런스', '계정_마케팅운영팁'];
     const ALL_TAGS = TAGS.filter(t => t !== '전체');
     let selectedTags = new Set(['전체']);
     let modalSelectedTags = new Set();
-    let pastedFile = null;
+    
+    // 이미지 관리 변수들 (기존 URL + 새 파일 목록)
+    let currentImageUrls = [];
+    let newFilesToUpload = [];
     let editingId = null;
-    let existingImageUrl = null;
     let cachedData = [];
     let isSelectMode = false;
     let selectedIds = new Set();
+    let cardSlideIndexes = {};
 
     document.addEventListener('paste', function(e) {
       const modal = document.getElementById('addModal');
@@ -148,18 +149,66 @@
       for (let item of items) {
         if (item.type.indexOf('image') === 0) {
           const blob = item.getAsFile();
-          pastedFile = blob;
-          
-          const reader = new FileReader();
-          reader.onload = function(event) {
-            document.getElementById('previewImg').src = event.target.result;
-            document.getElementById('pastePreview').classList.remove('hidden');
-          };
-          reader.readAsDataURL(blob);
+          newFilesToUpload.push(blob);
+          renderImageManageArea();
           break;
         }
       }
     });
+
+    function handleFileSelect(event) {
+      const files = Array.from(event.target.files);
+      newFilesToUpload.push(...files);
+      renderImageManageArea();
+    }
+
+    function renderImageManageArea() {
+      const container = document.getElementById('imageManageArea');
+      let html = '';
+
+      // 1. 기존 데이터베이스에 저장된 이미지들
+      currentImageUrls.forEach((url, index) => {
+        const isMain = index === 0;
+        html += `
+          <div class="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border ${isMain ? 'ring-2 ring-indigo-600 border-indigo-600' : 'border-slate-200'}">
+            <img src="${url}" class="w-full h-full object-cover">
+            ${isMain ? `<span class="absolute top-1 left-1 bg-indigo-600 text-white text-[9px] px-1 py-0.5 rounded font-bold">대표</span>` : `<button onclick="setMainExisting(${index})" class="absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1 py-0.5 rounded">대표설정</button>`}
+            <button onclick="removeExistingImg(${index})" class="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">&times;</button>
+          </div>
+        `;
+      });
+
+      // 2. 신규 추가할 파일 미리보기
+      newFilesToUpload.forEach((file, index) => {
+        const tempUrl = URL.createObjectURL(file);
+        const isMain = currentImageUrls.length === 0 && index === 0;
+        html += `
+          <div class="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border ${isMain ? 'ring-2 ring-indigo-600 border-indigo-600' : 'border-slate-200'}">
+            <img src="${tempUrl}" class="w-full h-full object-cover">
+            <span class="absolute bottom-1 right-1 bg-green-600 text-white text-[8px] px-1 rounded font-bold">NEW</span>
+            <button onclick="removeNewFile(${index})" class="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">&times;</button>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html || `<p class="text-[11px] text-slate-400 w-full py-2">선택된 이미지가 없습니다.</p>`;
+    }
+
+    function setMainExisting(index) {
+      const main = currentImageUrls.splice(index, 1)[0];
+      currentImageUrls.unshift(main);
+      renderImageManageArea();
+    }
+
+    function removeExistingImg(index) {
+      currentImageUrls.splice(index, 1);
+      renderImageManageArea();
+    }
+
+    function removeNewFile(index) {
+      newFilesToUpload.splice(index, 1);
+      renderImageManageArea();
+    }
 
     function toggleSelectMode() {
       isSelectMode = !isSelectMode;
@@ -196,7 +245,6 @@
       if (!confirm(`선택한 ${selectedIds.size}개 레퍼런스를 삭제할까요?`)) return;
 
       await supabaseClient.from('references').delete().in('id', Array.from(selectedIds));
-      
       toggleSelectMode();
       loadData();
     }
@@ -249,17 +297,17 @@
 
     function openModal() {
       editingId = null;
-      existingImageUrl = null;
+      currentImageUrls = [];
+      newFilesToUpload = [];
       document.getElementById('modalTitle').innerHTML = '<span>🖼️</span> 레퍼런스 등록';
       document.getElementById('inputTitle').value = '';
       document.getElementById('inputLink').value = '';
       document.getElementById('inputMemo').value = '';
       document.getElementById('inputFile').value = '';
-      document.getElementById('pastePreview').classList.add('hidden');
       modalSelectedTags.clear();
-      pastedFile = null;
       document.getElementById('addModal').classList.remove('hidden');
       renderModalTags();
+      renderImageManageArea();
     }
 
     function editReference(id) {
@@ -269,34 +317,28 @@
       if (!item) return;
 
       editingId = id;
-      existingImageUrl = item.image_url;
+      // 기존 단일 image_url과 여러 개 image_urls 통합
+      currentImageUrls = item.image_urls && item.image_urls.length > 0 ? [...item.image_urls] : (item.image_url ? [item.image_url] : []);
+      newFilesToUpload = [];
 
-      document.getElementById('modalTitle').innerHTML = '<span>✏️</span> 레퍼런스 수정';
+      document.getElementById('modalTitle').innerHTML = '<span>✏️</span> 레퍼런스 수정 (사진 추가/삭제 가능)';
       document.getElementById('inputTitle').value = item.title || '';
       document.getElementById('inputLink').value = item.link_url || '';
       document.getElementById('inputMemo').value = item.memo || '';
       document.getElementById('inputFile').value = '';
 
-      if (item.image_url) {
-        document.getElementById('previewImg').src = item.image_url;
-        document.getElementById('pastePreview').classList.remove('hidden');
-      } else {
-        document.getElementById('pastePreview').classList.add('hidden');
-      }
-
       modalSelectedTags = new Set(item.tags || []);
-      pastedFile = null;
       document.getElementById('addModal').classList.remove('hidden');
       renderModalTags();
+      renderImageManageArea();
     }
 
     function closeModal() {
       document.getElementById('addModal').classList.add('hidden');
       modalSelectedTags.clear();
-      pastedFile = null;
+      currentImageUrls = [];
+      newFilesToUpload = [];
       editingId = null;
-      existingImageUrl = null;
-      document.getElementById('pastePreview').classList.add('hidden');
     }
 
     function renderModalTags() {
@@ -318,7 +360,6 @@
       const title = document.getElementById('inputTitle').value;
       let link_url = document.getElementById('inputLink').value;
       const memo = document.getElementById('inputMemo').value;
-      const fileInput = document.getElementById('inputFile');
       const saveBtn = document.getElementById('saveBtn');
 
       if (link_url && link_url.includes('http')) {
@@ -326,23 +367,33 @@
         if (urlMatch) link_url = urlMatch[0];
       }
       
-      saveBtn.innerText = "저장 중...";
+      saveBtn.innerText = "사진 업로드 및 저장 중...";
       saveBtn.disabled = true;
 
-      let image_url = existingImageUrl;
-      let targetFile = pastedFile || (fileInput.files.length > 0 ? fileInput.files[0] : null);
-
-      if (targetFile) {
+      // 1. 신규 파일들 Supabase Storage 업로드
+      let uploadedUrls = [];
+      for (let targetFile of newFilesToUpload) {
         const fileExt = targetFile.name ? targetFile.name.split('.').pop() : 'png';
-        const fileName = `${Date.now()}.${fileExt}`;
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         const { data: uploadData, error: uploadError } = await supabaseClient.storage.from('reference-images').upload(fileName, targetFile);
         if (!uploadError) {
           const { data: urlData } = supabaseClient.storage.from('reference-images').getPublicUrl(fileName);
-          image_url = urlData.publicUrl;
+          uploadedUrls.push(urlData.publicUrl);
         }
       }
 
-      const payload = { title, link_url, memo, image_url, tags: Array.from(modalSelectedTags) };
+      // 최종 이미지 리스트 (기존 + 신규 업로드)
+      const finalImageUrls = [...currentImageUrls, ...uploadedUrls];
+      const mainImageUrl = finalImageUrls.length > 0 ? finalImageUrls[0] : null;
+
+      const payload = { 
+        title, 
+        link_url, 
+        memo, 
+        image_url: mainImageUrl, // 하위 호환 대표 썸네일 
+        image_urls: finalImageUrls, // 여러 장 배열 저장
+        tags: Array.from(modalSelectedTags) 
+      };
 
       let error;
       if (editingId) {
@@ -372,9 +423,19 @@
 
     async function loadData() {
       const { data, error } = await supabaseClient.from('references').select('*');
-
       cachedData = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      renderCards();
+    }
 
+    function prevSlide(id, max) {
+      cardSlideIndexes[id] = (cardSlideIndexes[id] || 0) - 1;
+      if (cardSlideIndexes[id] < 0) cardSlideIndexes[id] = max - 1;
+      renderCards();
+    }
+
+    function nextSlide(id, max) {
+      cardSlideIndexes[id] = (cardSlideIndexes[id] || 0) + 1;
+      if (cardSlideIndexes[id] >= max) cardSlideIndexes[id] = 0;
       renderCards();
     }
 
@@ -400,7 +461,10 @@
       }
 
       grid.innerHTML = filteredData.map(item => {
-        let displayImg = item.image_url;
+        // 여러 장 배열이 있으면 우선 사용, 없으면 단일 image_url 사용
+        const imgList = item.image_urls && item.image_urls.length > 0 ? item.image_urls : (item.image_url ? [item.image_url] : []);
+        const curIdx = cardSlideIndexes[item.id] || 0;
+        const displayImg = imgList[curIdx] || null;
         const isSelected = selectedIds.has(item.id);
 
         return `
@@ -412,7 +476,7 @@
               </div>
             ` : `
               <div class="absolute top-2.5 right-2.5 z-10 flex gap-1">
-                <button onclick="event.stopPropagation(); editReference('${item.id}')" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="수정">
+                <button onclick="event.stopPropagation(); editReference('${item.id}')" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="수정/사진추가">
                   ✏️
                 </button>
                 <button onclick="event.stopPropagation(); deleteReference('${item.id}')" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="삭제">
@@ -422,8 +486,16 @@
             `}
             
             ${displayImg ? `
-              <div class="overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[120px] flex items-center justify-center cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">
+              <div class="relative overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[120px] flex items-center justify-center cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">
                 <img src="${displayImg}" class="w-full object-cover group-hover:scale-105 transition duration-300" loading="lazy"/>
+                
+                ${imgList.length > 1 ? `
+                  <span class="absolute top-2.5 left-2.5 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm">
+                    ${curIdx + 1} / ${imgList.length}
+                  </span>
+                  <button onclick="event.stopPropagation(); prevSlide('${item.id}', ${imgList.length})" class="absolute left-1 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">❮</button>
+                  <button onclick="event.stopPropagation(); nextSlide('${item.id}', ${imgList.length})" class="absolute right-1 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">❯</button>
+                ` : ''}
               </div>
             ` : ''}
             
