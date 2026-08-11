@@ -64,11 +64,11 @@
     <div id="cardGrid" class="masonry-grid"></div>
   </main>
 
-  <!-- 등록 모달 팝업 -->
+  <!-- 등록 및 수정 모달 팝업 -->
   <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300">
     <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-800">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
-        <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h2 id="modalTitle" class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span>🖼️</span> 레퍼런스 등록
         </h2>
         <button onclick="closeModal()" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">&times;</button>
@@ -92,7 +92,7 @@
             <p class="text-[11px] text-indigo-500 font-medium mt-1">💡 캡처 후 이 팝업창에서 바로 <kbd class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px]">V</kbd> 하셔도 됩니다!</p>
             <div id="pastePreview" class="mt-2 hidden">
               <img id="previewImg" src="" class="max-h-32 mx-auto rounded-lg border shadow-sm">
-              <span class="text-[10px] text-green-600 dark:text-green-400 font-bold block mt-1">✓ 캡처 이미지가 붙여넣어졌습니다!</span>
+              <span class="text-[10px] text-green-600 dark:text-green-400 font-bold block mt-1">✓ 이미지가 선택/붙여넣어졌습니다!</span>
             </div>
           </div>
         </div>
@@ -123,6 +123,9 @@
     let selectedTags = new Set(['전체']);
     let modalSelectedTags = new Set();
     let pastedFile = null;
+    let editingId = null;
+    let existingImageUrl = null;
+    let cachedData = [];
 
     // Ctrl+V 붙여넣기 이벤트 리스너
     document.addEventListener('paste', function(e) {
@@ -193,6 +196,42 @@
     }
 
     function openModal() {
+      editingId = null;
+      existingImageUrl = null;
+      document.getElementById('modalTitle').innerHTML = '<span>🖼️</span> 레퍼런스 등록';
+      document.getElementById('inputTitle').value = '';
+      document.getElementById('inputLink').value = '';
+      document.getElementById('inputMemo').value = '';
+      document.getElementById('inputFile').value = '';
+      document.getElementById('pastePreview').classList.add('hidden');
+      modalSelectedTags.clear();
+      pastedFile = null;
+      document.getElementById('addModal').classList.remove('hidden');
+      renderModalTags();
+    }
+
+    function editReference(id) {
+      const item = cachedData.find(i => i.id === id);
+      if (!item) return;
+
+      editingId = id;
+      existingImageUrl = item.image_url;
+
+      document.getElementById('modalTitle').innerHTML = '<span>✏️</span> 레퍼런스 수정';
+      document.getElementById('inputTitle').value = item.title || '';
+      document.getElementById('inputLink').value = item.link_url || '';
+      document.getElementById('inputMemo').value = item.memo || '';
+      document.getElementById('inputFile').value = '';
+
+      if (item.image_url) {
+        document.getElementById('previewImg').src = item.image_url;
+        document.getElementById('pastePreview').classList.remove('hidden');
+      } else {
+        document.getElementById('pastePreview').classList.add('hidden');
+      }
+
+      modalSelectedTags = new Set(item.tags || []);
+      pastedFile = null;
       document.getElementById('addModal').classList.remove('hidden');
       renderModalTags();
     }
@@ -201,6 +240,8 @@
       document.getElementById('addModal').classList.add('hidden');
       modalSelectedTags.clear();
       pastedFile = null;
+      editingId = null;
+      existingImageUrl = null;
       document.getElementById('pastePreview').classList.add('hidden');
     }
 
@@ -226,10 +267,10 @@
       const fileInput = document.getElementById('inputFile');
       const saveBtn = document.getElementById('saveBtn');
       
-      saveBtn.innerText = "업로드 중...";
+      saveBtn.innerText = "저장 중...";
       saveBtn.disabled = true;
 
-      let image_url = null;
+      let image_url = existingImageUrl;
       let targetFile = pastedFile || (fileInput.files.length > 0 ? fileInput.files[0] : null);
 
       if (targetFile) {
@@ -242,23 +283,37 @@
         }
       }
 
-      const { error } = await supabaseClient.from('references').insert([{
-        title, link_url, memo, image_url, tags: Array.from(modalSelectedTags)
-      }]);
+      let error;
+      if (editingId) {
+        // 수정 모드
+        const res = await supabaseClient.from('references').update({
+          title, link_url, memo, image_url, tags: Array.from(modalSelectedTags)
+        }).eq('id', editingId);
+        error = res.error;
+      } else {
+        // 신규 등록 모드
+        const res = await supabaseClient.from('references').insert([{
+          title, link_url, memo, image_url, tags: Array.from(modalSelectedTags)
+        }]);
+        error = res.error;
+      }
 
       saveBtn.innerText = "저장하기";
       saveBtn.disabled = false;
 
       if (!error) {
         closeModal();
-        document.getElementById('inputTitle').value = '';
-        document.getElementById('inputLink').value = '';
-        document.getElementById('inputMemo').value = '';
-        document.getElementById('inputFile').value = '';
         loadData();
       } else {
         alert('저장 실패: ' + error.message);
       }
+    }
+
+    async function deleteReference(id) {
+      if (!confirm('이 레퍼런스를 정말 삭제할까요?')) return;
+      const { error } = await supabaseClient.from('references').delete().eq('id', id);
+      if (!error) loadData();
+      else alert('삭제 실패: ' + error.message);
     }
 
     async function loadData() {
@@ -266,7 +321,9 @@
       const { data, error } = await query;
       if (error) return console.error(error);
 
-      let filteredData = data || [];
+      cachedData = data || [];
+      let filteredData = cachedData;
+
       if (!selectedTags.has('전체')) {
         filteredData = filteredData.filter(item => {
           if (selectedTags.has('📌핀고정') && item.is_pinned) return true;
@@ -294,19 +351,29 @@
 
         return `
           <div class="masonry-item bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-slate-200/60 dark:border-slate-800 transition-all duration-200 relative group">
-            <button onclick="togglePin('${item.id}', ${item.is_pinned})" class="absolute top-2.5 right-2.5 z-10 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center backdrop-blur-md transition-all active:scale-90">
-              ${item.is_pinned ? '📌' : '📍'}
-            </button>
+            
+            <!-- 상단 관리 버튼 (핀 / 수정 / 삭제) -->
+            <div class="absolute top-2.5 right-2.5 z-10 flex gap-1">
+              <button onclick="togglePin('${item.id}', ${item.is_pinned})" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs">
+                ${item.is_pinned ? '📌' : '📍'}
+              </button>
+              <button onclick="editReference('${item.id}')" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="수정">
+                ✏️
+              </button>
+              <button onclick="deleteReference('${item.id}')" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="삭제">
+                🗑️
+              </button>
+            </div>
             
             ${displayImg ? `
-              <div class="overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[120px] flex items-center justify-center">
+              <div class="overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[120px] flex items-center justify-center cursor-pointer" onclick="editReference('${item.id}')">
                 <img src="${displayImg}" class="w-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" onerror="this.onerror=null; this.parentElement.style.display='none';"/>
               </div>
             ` : ''}
             
             <div class="p-3.5">
-              ${item.title ? `<h3 class="font-bold text-sm text-slate-900 dark:text-white leading-snug mb-1.5">${item.title}</h3>` : ''}
-              ${item.memo ? `<p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-2.5 whitespace-pre-line">${item.memo}</p>` : ''}
+              ${item.title ? `<h3 class="font-bold text-sm text-slate-900 dark:text-white leading-snug mb-1.5 cursor-pointer" onclick="editReference('${item.id}')">${item.title}</h3>` : ''}
+              ${item.memo ? `<p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-2.5 whitespace-pre-line cursor-pointer" onclick="editReference('${item.id}')">${item.memo}</p>` : ''}
               
               ${item.tags && item.tags.length > 0 ? `
                 <div class="flex flex-wrap gap-1 mb-3">
