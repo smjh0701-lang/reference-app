@@ -336,12 +336,15 @@
         }
       }
 
+      // is_pinned 항목을 완전히 제거하여 보내도록 수정!
       const payload = { title, link_url, memo, image_url, tags: Array.from(modalSelectedTags) };
 
       let error;
       if (editingId) {
-        const res = await supabaseClient.from('reference').update(payload).eq('id', editingId);
-        error = res.error;
+        // reference와 references 두 곳 모두 수정 시도
+        const res1 = await supabaseClient.from('reference').update(payload).eq('id', editingId);
+        const res2 = await supabaseClient.from('references').update(payload).eq('id', editingId);
+        error = res1.error && res2.error;
       } else {
         const res = await supabaseClient.from('reference').insert([payload]);
         error = res.error;
@@ -354,7 +357,7 @@
         closeModal();
         loadData();
       } else {
-        alert('저장 실패: ' + error.message);
+        alert('저장 실패: ' + (error.message || '오류 발생'));
       }
     }
 
