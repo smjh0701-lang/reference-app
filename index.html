@@ -18,6 +18,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-300">
 
+  <!-- 헤더 -->
   <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-3">
     <div class="max-w-md mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2">
@@ -40,6 +41,7 @@
       </div>
     </div>
     
+    <!-- 카테고리 필터 버튼 영역 -->
     <div class="max-w-md mx-auto mt-2.5 flex items-center justify-between gap-2">
       <button onclick="toggleFilterDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition">
         <span>🏷️ 카테고리 선택</span>
@@ -50,6 +52,7 @@
       <div id="selectedChips" class="flex gap-1 overflow-x-auto no-scrollbar text-[11px]"></div>
     </div>
 
+    <!-- 접이식 카테고리 태그 선택창 -->
     <div id="filterDrawer" class="max-w-md mx-auto mt-2.5 hidden bg-slate-100/90 dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 backdrop-blur">
       <div class="text-[11px] font-bold text-slate-400 mb-2 flex justify-between items-center">
         <span>한 눈에 보는 카테고리 (복수 선택 가능)</span>
@@ -59,10 +62,12 @@
     </div>
   </header>
 
+  <!-- 메인 그리드 영역 -->
   <main class="max-w-md mx-auto p-3.5">
     <div id="cardGrid" class="masonry-grid"></div>
   </main>
 
+  <!-- 하단 일괄 삭제 플로팅 바 -->
   <div id="deleteBar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden bg-rose-600 text-white px-5 py-3 rounded-2xl shadow-xl border border-rose-500 flex items-center gap-4 text-xs font-bold transition-all">
     <span id="selectedCount">0개 선택됨</span>
     <button onclick="deleteSelected()" class="bg-white text-rose-600 px-3 py-1.5 rounded-xl hover:bg-rose-50 active:scale-95 transition">
@@ -70,6 +75,7 @@
     </button>
   </div>
 
+  <!-- 등록 및 수정 모달 팝업 -->
   <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300">
     <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-800">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -122,7 +128,7 @@
     const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb"; 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 수정된 태그 목록 반영!
+    // 새 요청 태그 반영
     const TAGS = ['전체', '맛집_레퍼런스', '여행_레퍼런스', '맛집추천', '여행추천', '책추천', '촬영_노하우', '촬영_영상구성레퍼런스', '편집_영상레퍼런스', '편집_썸네일레퍼런스', '편집_꿀팁', '계정_레퍼런스', '계정_마케팅운영팁'];
     const ALL_TAGS = TAGS.filter(t => t !== '전체');
     let selectedTags = new Set(['전체']);
@@ -189,7 +195,7 @@
       if (selectedIds.size === 0) return alert('삭제할 항목을 선택해주세요.');
       if (!confirm(`선택한 ${selectedIds.size}개 레퍼런스를 삭제할까요?`)) return;
 
-      await supabaseClient.from('reference').delete().in('id', Array.from(selectedIds));
+      // references 단일 테이블 삭제
       await supabaseClient.from('references').delete().in('id', Array.from(selectedIds));
       
       toggleSelectMode();
@@ -341,11 +347,11 @@
 
       let error;
       if (editingId) {
-        const res1 = await supabaseClient.from('reference').update(payload).eq('id', editingId);
-        const res2 = await supabaseClient.from('references').update(payload).eq('id', editingId);
-        error = res1.error && res2.error;
+        // 단일 DB 테이블 references만 정밀 조작!
+        const res = await supabaseClient.from('references').update(payload).eq('id', editingId);
+        error = res.error;
       } else {
-        const res = await supabaseClient.from('reference').insert([payload]);
+        const res = await supabaseClient.from('references').insert([payload]);
         error = res.error;
       }
 
@@ -362,25 +368,14 @@
 
     async function deleteReference(id) {
       if (!confirm('이 레퍼런스를 정말 삭제할까요?')) return;
-      await supabaseClient.from('reference').delete().eq('id', id);
       await supabaseClient.from('references').delete().eq('id', id);
       loadData();
     }
 
     async function loadData() {
-      const req1 = supabaseClient.from('reference').select('*');
-      const req2 = supabaseClient.from('references').select('*');
+      const { data, error } = await supabaseClient.from('references').select('*');
 
-      const [res1, res2] = await Promise.all([req1, req2]);
-
-      const data1 = res1.data || [];
-      const data2 = res2.data || [];
-
-      const combined = [...data1, ...data2];
-      const uniqueMap = new Map();
-      combined.forEach(item => uniqueMap.set(item.id, item));
-
-      cachedData = Array.from(uniqueMap.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      cachedData = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       renderCards();
     }
