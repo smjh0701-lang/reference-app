@@ -19,7 +19,7 @@
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-24 transition-colors duration-300">
 
   <!-- 헤더 -->
-  <header class="sticky top-0 z-40 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-3.5">
+  <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-3">
     <div class="max-w-md mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="text-xl">✨</span>
@@ -38,8 +38,26 @@
       </div>
     </div>
     
-    <!-- 태그 필터 스크롤바 -->
-    <div class="max-w-md mx-auto mt-3 flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs" id="tagFilters"></div>
+    <!-- 카테고리 필터 버튼 영역 -->
+    <div class="max-w-md mx-auto mt-2.5 flex items-center justify-between gap-2">
+      <button onclick="toggleFilterDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition">
+        <span>🏷️ 카테고리 선택</span>
+        <span id="filterBadge" class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">전체</span>
+        <svg id="arrowIcon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+
+      <!-- 현재 선택된 태그 요약 칩 -->
+      <div id="selectedChips" class="flex gap-1 overflow-x-auto no-scrollbar text-[11px]"></div>
+    </div>
+
+    <!-- 접이식 카테고리 태그 선택창 -->
+    <div id="filterDrawer" class="max-w-md mx-auto mt-2.5 hidden bg-slate-100/90 dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 backdrop-blur">
+      <div class="text-[11px] font-bold text-slate-400 mb-2 flex justify-between items-center">
+        <span>한 눈에 보는 카테고리 (복수 선택 가능)</span>
+        <button onclick="resetTags()" class="text-indigo-500 hover:underline">초기화</button>
+      </div>
+      <div id="tagFiltersGrid" class="flex flex-wrap gap-1.5"></div>
+    </div>
   </header>
 
   <!-- 메인 그리드 영역 -->
@@ -50,7 +68,6 @@
   <!-- 등록 모달 팝업 -->
   <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300">
     <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-800">
-      
       <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
         <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span>📌</span> 레퍼런스 등록
@@ -63,22 +80,18 @@
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">제목</label>
           <input type="text" id="inputTitle" placeholder="레퍼런스 제목을 적어주세요" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
         </div>
-
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">출처 / 영상 링크</label>
           <input type="url" id="inputLink" placeholder="https://instagram.com/..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
         </div>
-
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">이미지 파일 첨부</label>
           <input type="file" id="inputFile" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400 hover:file:bg-indigo-100 transition">
         </div>
-
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1.5">태그 선택</label>
           <div id="modalTags" class="flex flex-wrap gap-1.5"></div>
         </div>
-
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">메모 / 아이디어 포인트</label>
           <textarea id="inputMemo" rows="3" placeholder="어떤 부분이 참고가 되었나요?" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition resize-none"></textarea>
@@ -101,13 +114,36 @@
     let selectedTags = new Set(['전체']);
     let modalSelectedTags = new Set();
 
+    function toggleFilterDrawer() {
+      const drawer = document.getElementById('filterDrawer');
+      const arrow = document.getElementById('arrowIcon');
+      drawer.classList.toggle('hidden');
+      arrow.classList.toggle('rotate-180');
+    }
+
     function renderTagFilters() {
-      const container = document.getElementById('tagFilters');
+      const container = document.getElementById('tagFiltersGrid');
+      const badge = document.getElementById('filterBadge');
+      const chips = document.getElementById('selectedChips');
+
+      badge.innerText = selectedTags.has('전체') ? '전체' : `${selectedTags.size}개`;
+
       container.innerHTML = TAGS.map(tag => `
-        <button onclick="toggleTag('${tag}')" class="px-3 py-1.5 rounded-full whitespace-nowrap transition-all duration-200 ${selectedTags.has(tag) ? 'bg-indigo-600 text-white font-semibold shadow-sm shadow-indigo-500/30' : 'bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300/70'}">
+        <button onclick="toggleTag('${tag}')" class="px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 ${selectedTags.has(tag) ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
           ${tag}
         </button>
       `).join('');
+
+      chips.innerHTML = Array.from(selectedTags).map(t => `
+        <span class="bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-lg whitespace-nowrap font-medium">#${t}</span>
+      `).join('');
+    }
+
+    function resetTags() {
+      selectedTags.clear();
+      selectedTags.add('전체');
+      renderTagFilters();
+      loadData();
     }
 
     function toggleTag(tag) {
