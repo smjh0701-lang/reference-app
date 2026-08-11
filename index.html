@@ -12,19 +12,52 @@
     .masonry-item { break-inside: avoid; margin-bottom: 12px; }
   </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen pb-20">
-  <header class="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 p-4">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen pb-24">
+  <header class="sticky top-0 z-40 bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b border-gray-200 dark:border-gray-700 p-4">
     <div class="max-w-md mx-auto flex items-center justify-between">
       <h1 class="text-xl font-bold">📂 레퍼런스 창고</h1>
-      <button id="themeToggle" onclick="document.body.classList.toggle('dark')" class="p-2 rounded-lg bg-gray-100 dark:bg-gray-700">🌙</button>
+      <div class="flex gap-2 items-center">
+        <button onclick="openModal()" class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-sm">+ 추가</button>
+        <button id="themeToggle" onclick="document.body.classList.toggle('dark')" class="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700">🌙</button>
+      </div>
     </div>
-    <div class="max-w-md mx-auto mt-3 flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs" id="tagFilters">
-    </div>
+    <div class="max-w-md mx-auto mt-3 flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs" id="tagFilters"></div>
   </header>
 
   <main class="max-w-md mx-auto p-3">
     <div id="cardGrid" class="masonry-grid"></div>
   </main>
+
+  <!-- 수동 등록 모달 팝업 -->
+  <div id="addModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b pb-2 dark:border-gray-700">
+        <h2 class="text-base font-bold">새 레퍼런스 직접 등록</h2>
+        <button onclick="closeModal()" class="text-gray-400 text-xl font-bold">&times;</button>
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">제목</label>
+        <input type="text" id="inputTitle" placeholder="제목을 입력하세요" class="w-full p-2 border rounded-lg text-xs dark:bg-gray-700 dark:border-gray-600">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">인스타 / 유튜브 링크 (선택)</label>
+        <input type="url" id="inputLink" placeholder="https://..." class="w-full p-2 border rounded-lg text-xs dark:bg-gray-700 dark:border-gray-600">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">스크린샷 / 이미지 파일 첨부</label>
+        <input type="file" id="inputFile" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-indigo-50 file:text-indigo-700">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">태그 선택 (여러 개 클릭 가능)</label>
+        <div id="modalTags" class="flex flex-wrap gap-1.5"></div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">메모</label>
+        <textarea id="inputMemo" rows="2" placeholder="아이디어나 참고할 특징 기록" class="w-full p-2 border rounded-lg text-xs dark:bg-gray-700 dark:border-gray-600"></textarea>
+      </div>
+      <button onclick="saveReference()" id="saveBtn" class="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs">저장하기</button>
+    </div>
+  </div>
 
   <script>
     const SUPABASE_URL = "https://mvgxqnqucbcipyrwdalj.supabase.co";
@@ -32,7 +65,9 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const TAGS = ['전체', '📌핀고정', '맛집', '여행_국내', '여행_해외', '촬영_노하우', '촬영_영상구성레퍼런스', '편집_영상레퍼런스', '편집_썸네일레퍼런스', '편집_꿀팁', '계정_레퍼런스', '계정_마케팅운영팁'];
+    const ALL_TAGS = TAGS.filter(t => t !== '전체' && t !== '📌핀고정');
     let selectedTags = new Set(['전체']);
+    let modalSelectedTags = new Set();
 
     function renderTagFilters() {
       const container = document.getElementById('tagFilters');
@@ -57,6 +92,72 @@
       loadData();
     }
 
+    function openModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+      renderModalTags();
+    }
+
+    function closeModal() {
+      document.getElementById('addModal').classList.add('hidden');
+      modalSelectedTags.clear();
+    }
+
+    function renderModalTags() {
+      const container = document.getElementById('modalTags');
+      container.innerHTML = ALL_TAGS.map(tag => `
+        <button onclick="toggleModalTag('${tag}')" type="button" class="px-2 py-1 rounded-md text-xs transition ${modalSelectedTags.has(tag) ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}">
+          #${tag}
+        </button>
+      `).join('');
+    }
+
+    function toggleModalTag(tag) {
+      if (modalSelectedTags.has(tag)) modalSelectedTags.delete(tag);
+      else modalSelectedTags.add(tag);
+      renderModalTags();
+    }
+
+    async function saveReference() {
+      const title = document.getElementById('inputTitle').value;
+      const link_url = document.getElementById('inputLink').value;
+      const memo = document.getElementById('inputMemo').value;
+      const fileInput = document.getElementById('inputFile');
+      const saveBtn = document.getElementById('saveBtn');
+      
+      saveBtn.innerText = "저장 중...";
+      saveBtn.disabled = true;
+
+      let image_url = null;
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage.from('reference-images').upload(fileName, file);
+        if (!uploadError) {
+          const { data: urlData } = supabaseClient.storage.from('reference-images').getPublicUrl(fileName);
+          image_url = urlData.publicUrl;
+        }
+      }
+
+      const { error } = await supabaseClient.from('references').insert([{
+        title, link_url, memo, image_url, tags: Array.from(modalSelectedTags)
+      }]);
+
+      saveBtn.innerText = "저장하기";
+      saveBtn.disabled = false;
+
+      if (!error) {
+        closeModal();
+        document.getElementById('inputTitle').value = '';
+        document.getElementById('inputLink').value = '';
+        document.getElementById('inputMemo').value = '';
+        document.getElementById('inputFile').value = '';
+        loadData();
+      } else {
+        alert('저장 실패: ' + error.message);
+      }
+    }
+
     async function loadData() {
       let query = supabaseClient.from('references').select('*').order('is_pinned', { ascending: false }).order('created_at', { ascending: false });
       const { data, error } = await query;
@@ -71,6 +172,11 @@
       }
 
       const grid = document.getElementById('cardGrid');
+      if (filteredData.length === 0) {
+        grid.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400 text-xs">저장된 레퍼런스가 없습니다.<br>우측 상단 '+ 추가' 버튼을 눌러 첫 레퍼런스를 적어보세요!</div>`;
+        return;
+      }
+
       grid.innerHTML = filteredData.map(item => `
         <div class="masonry-item bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 relative">
           <button onclick="togglePin('${item.id}', ${item.is_pinned})" class="absolute top-2 right-2 bg-black/40 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur">
