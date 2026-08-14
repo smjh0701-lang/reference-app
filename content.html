@@ -68,7 +68,8 @@
         <button id="cancelMemoEditBtn" onclick="cancelQuickMemoEdit()" class="hidden text-xs text-amber-700 hover:underline">취소</button>
       </div>
       <div class="flex gap-2">
-        <input type="text" id="quickMemoInput" placeholder="예: 봄 시즌 제주도 카페 릴스 구도 생각남..." class="flex-1 px-4 py-3 text-xs rounded-xl border border-amber-300/80 dark:border-amber-700 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white">
+        <!-- ⌨️ Enter 키 이벤트 추가 -->
+        <input type="text" id="quickMemoInput" onkeydown="handleQuickMemoKey(event)" placeholder="예: 봄 시즌 제주도 카페 릴스 구도 생각남... (Enter를 누르면 등록됩니다)" class="flex-1 px-4 py-3 text-xs rounded-xl border border-amber-300/80 dark:border-amber-700 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white">
         <button id="quickMemoSaveBtn" onclick="saveQuickMemo()" class="px-5 py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold rounded-xl text-xs whitespace-nowrap shadow-md transition">
           등록
         </button>
@@ -235,6 +236,14 @@
       }
 
       renderList();
+    }
+
+    // ⌨️ 엔터 키 입력 시 바로 등록/수정 실행 (한글 중복 입력 방지 포함)
+    function handleQuickMemoKey(event) {
+      if (event.key === 'Enter' && !event.isComposing) {
+        event.preventDefault();
+        saveQuickMemo();
+      }
     }
 
     async function saveQuickMemo() {
@@ -516,13 +525,12 @@
       return `<span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold">마감지남</span>`;
     }
 
-    // 🚀 레퍼런스 창고의 [링크 바로가기 ↗]와 100% 동일한 새창 이동 실행 함수
+    // 🚀 레퍼런스 창고의 '링크 바로가기 ↗'와 100% 동일한 새창 이동 실행 함수
     function goToRefLink(refId, event) {
       if (event) event.stopPropagation();
       const ref = referenceList.find(r => String(r.id) === String(refId));
       if (!ref) return;
 
-      // references 테이블에 저장된 링크 값 추출
       let targetUrl = ref.link || ref.url || ref.source_url || ref.link_url || ref.original_url || ref.post_url || '';
 
       if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.trim()) {
