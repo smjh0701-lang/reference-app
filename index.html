@@ -62,12 +62,14 @@
           <input type="url" id="inputUrl" placeholder="https://www.instagram.com/p/..." class="w-full px-3.5 py-2.5 border rounded-xl dark:bg-slate-800 focus:outline-none">
         </div>
 
+        <!-- 🏷️ 선택형 태그 목록 + 직접 입력 -->
         <div>
-          <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">🏷️ 태그 (쉼표로 구분)</label>
-          <input type="text" id="inputTags" placeholder="예: 릴스, 캡컷, 텍스트효과" class="w-full px-3.5 py-2.5 border rounded-xl dark:bg-slate-800 focus:outline-none">
+          <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">🏷️ 태그 선택 (버튼을 눌러 선택하거나 신규 작성)</label>
+          <div id="modalTagPresetList" class="flex flex-wrap gap-1 mb-2"></div>
+          <input type="text" id="inputTags" placeholder="새 태그 입력 (쉼표로 구분 예: 릴스, 캡컷)" class="w-full px-3.5 py-2.5 border rounded-xl dark:bg-slate-800 focus:outline-none">
         </div>
 
-        <!-- 📷 이미지 다중 첨부 -->
+        <!-- 📷 이미지 다중 첨부 + Ctrl+V 복사붙여넣기 -->
         <div>
           <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">📷 이미지 캡처/첨부 (여러 장 붙여넣기 가능)</label>
           <div id="imageDropArea" class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center cursor-pointer hover:border-indigo-500 transition bg-slate-50 dark:bg-slate-800/50" onclick="document.getElementById('fileInput').click()">
@@ -101,8 +103,9 @@
     let selectedTag = 'ALL';
     let editingId = null;
     let imageList = [];
+    let selectedModalTags = new Set();
 
-    // 클립보드 이미지 붙여넣기
+    // 클립보드 이미지 붙여넣기 (Ctrl+V)
     window.addEventListener('paste', function(e) {
       const modal = document.getElementById('refModal');
       if (modal.classList.contains('hidden')) return;
@@ -151,8 +154,35 @@
       `).join('');
     }
 
+    function renderModalTagPresets() {
+      const tagSet = new Set();
+      referenceList.forEach(item => {
+        (item.tags || []).forEach(t => tagSet.add(t));
+      });
+
+      const container = document.getElementById('modalTagPresetList');
+      container.innerHTML = Array.from(tagSet).map(tag => {
+        const isSelected = selectedModalTags.has(tag);
+        return `
+          <button type="button" onclick="toggleModalTag('${tag}')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${isSelected ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}">
+            #${tag}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function toggleModalTag(tag) {
+      if (selectedModalTags.has(tag)) {
+        selectedModalTags.delete(tag);
+      } else {
+        selectedModalTags.add(tag);
+      }
+      renderModalTagPresets();
+    }
+
     function openModalForNew() {
       editingId = null;
+      selectedModalTags.clear();
       document.getElementById('modalTitle').innerText = '📁 레퍼런스 등록';
       document.getElementById('saveBtn').innerText = '저장하기';
       document.getElementById('inputTitle').value = '';
@@ -161,6 +191,7 @@
       document.getElementById('inputMemo').value = '';
       imageList = [];
       renderImagePreviews();
+      renderModalTagPresets();
       document.getElementById('refModal').classList.remove('hidden');
     }
 
@@ -173,11 +204,11 @@
       document.getElementById('saveBtn').innerText = '수정 완료';
       document.getElementById('inputTitle').value = item.title || '';
       
-      // 원본 URL 필드명 안전 대입 (url, link, link_url 대치)
       const targetUrl = item.url || item.link || item.link_url || '';
       document.getElementById('inputUrl').value = targetUrl;
       
-      document.getElementById('inputTags').value = (item.tags || []).join(', ');
+      document.getElementById('inputTags').value = '';
+      selectedModalTags = new Set(item.tags || []);
       document.getElementById('inputMemo').value = item.memo || '';
 
       imageList = [];
@@ -187,6 +218,7 @@
         imageList = [item.image_url];
       }
       renderImagePreviews();
+      renderModalTagPresets();
 
       document.getElementById('refModal').classList.remove('hidden');
     }
@@ -203,12 +235,13 @@
 
       if (!title) return alert('제목을 입력해주세요.');
 
-      const tags = tagsRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+      const manualTags = tagsRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+      const finalTags = Array.from(new Set([...Array.from(selectedModalTags), ...manualTags]));
 
       const payload = { 
         title, 
         url, 
-        tags, 
+        tags: finalTags, 
         image_urls: imageList, 
         image_url: imageList[0] || null,
         memo 
