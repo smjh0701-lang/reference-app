@@ -83,7 +83,7 @@
         <button onclick="changeMonth(1)" class="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 font-bold text-xs">다음달 ▶</button>
       </div>
 
-      <!-- 🎨 일정 유형 범례 표 (알아보기 쉬운 예시) -->
+      <!-- 🎨 일정 유형 범례 표 -->
       <div class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-[11px] font-bold border border-slate-100 dark:border-slate-800">
         <span class="text-slate-400 font-bold">구분 색상:</span>
         <span class="bg-emerald-500 text-white px-2 py-0.5 rounded">🟩 블로그 방문일</span>
@@ -239,20 +239,23 @@
 
     async function saveQuickMemo() {
       const input = document.getElementById('quickMemoInput');
-      if (!input.value.trim()) return alert('메모 내용을 입력해주세요.');
+      const val = input.value.trim();
+      if (!val) return alert('메모 내용을 입력해주세요.');
 
       if (editingMemoId) {
-        await supabaseClient.from('content_plans').update({ title: input.value }).eq('id', editingMemoId);
+        const { error } = await supabaseClient.from('content_plans').update({ title: val }).eq('id', editingMemoId);
+        if (error) return alert('메모 수정 실패: ' + error.message);
         editingMemoId = null;
         document.getElementById('quickMemoSaveBtn').innerText = '등록';
         document.getElementById('quickMemoLabel').innerText = '⚡ 생각나는 아이디어 빠르게 적기';
         document.getElementById('cancelMemoEditBtn').classList.add('hidden');
       } else {
-        await supabaseClient.from('content_plans').insert([{
-          title: input.value,
+        const { error } = await supabaseClient.from('content_plans').insert([{
+          title: val,
           memo_type: 'quick_memo',
           status: '아이디어'
         }]);
+        if (error) return alert('메모 저장 실패: ' + error.message);
       }
 
       input.value = '';
@@ -289,7 +292,7 @@
         document.getElementById('inputPayAmount').value = item.pay_amount || '';
         document.getElementById('inputPayStatus').value = item.pay_status || '대기';
         document.getElementById('inputGuideText').value = item.guide_text || '';
-        selectedRefIds = new Set(item.ref_ids || []);
+        selectedRefIds = new Set((item.ref_ids || []).map(String));
       } else {
         editingId = null;
         document.getElementById('modalTitle').innerText = '📝 콘텐츠 기획서 작성';
@@ -315,7 +318,7 @@
     function duplicatePlan(item, event) {
       if (event) event.stopPropagation();
       editingId = null;
-      selectedRefIds = new Set(item.ref_ids || []);
+      selectedRefIds = new Set((item.ref_ids || []).map(String));
       document.getElementById('modalTitle').innerText = '📋 기획 복사본 생성';
       document.getElementById('saveBtn').innerText = '기획서 저장하기';
       document.getElementById('inputTitle').value = `[복사본] ${item.title || ''}`;
@@ -386,16 +389,17 @@
     }
 
     async function savePlan() {
-      const title = document.getElementById('inputTitle').value;
+      const title = document.getElementById('inputTitle').value.trim();
       const platform = document.getElementById('inputPlatform').value;
       const status = document.getElementById('inputStatus').value;
       const schedule_type = document.getElementById('inputScheduleType').value;
-      const due_date = document.getElementById('inputDueDate').value || null;
+      const rawDueDate = document.getElementById('inputDueDate').value;
+      const due_date = rawDueDate ? rawDueDate : null; // 빈 문자열 대신 null 전달
       const pay_amount = Number(document.getElementById('inputPayAmount').value) || 0;
       const pay_status = document.getElementById('inputPayStatus').value;
-      const guide_text = document.getElementById('inputGuideText').value;
+      const guide_text = document.getElementById('inputGuideText').value.trim();
 
-      if (!title) return alert('제목을 입력해주세요.');
+      if (!title) return alert('기획 제목을 입력해주세요.');
 
       const payload = { 
         title, platform, status, schedule_type, due_date, pay_amount, pay_status, guide_text, 
@@ -404,9 +408,17 @@
       };
 
       if (editingId) {
-        await supabaseClient.from('content_plans').update(payload).eq('id', editingId);
+        const { error } = await supabaseClient.from('content_plans').update(payload).eq('id', editingId);
+        if (error) {
+          alert('기획서 수정 중 오류가 발생했습니다: ' + error.message);
+          return;
+        }
       } else {
-        await supabaseClient.from('content_plans').insert([payload]);
+        const { error } = await supabaseClient.from('content_plans').insert([payload]);
+        if (error) {
+          alert('기획서 저장 중 오류가 발생했습니다: ' + error.message);
+          return;
+        }
       }
 
       closeModal();
@@ -416,12 +428,17 @@
     async function deleteItem(id, event = null) {
       if (event) event.stopPropagation();
       if (!confirm('삭제하시겠습니까?')) return;
-      await supabaseClient.from('content_plans').delete().eq('id', id);
+      const { error } = await supabaseClient.from('content_plans').delete().eq('id', id);
+      if (error) return alert('삭제 중 오류가 발생했습니다: ' + error.message);
       loadData();
     }
 
     async function loadData() {
-      const { data } = await supabaseClient.from('content_plans').select('*');
+      const { data, error } = await supabaseClient.from('content_plans').select('*');
+      if (error) {
+        console.error('데이터 조회 오류:', error);
+        return;
+      }
       cachedData = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       const { data: refData } = await supabaseClient.from('references').select('*');
@@ -532,7 +549,7 @@
           `;
         }
 
-        const linkedRefs = referenceList.filter(r => (item.ref_ids || []).includes(String(r.id)));
+        const linkedRefs = referenceList.filter(r => (item.ref_ids || []).map(String).includes(String(r.id)));
 
         return `
           <div class="p-4 sm:p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl space-y-3 shadow-sm hover:shadow-md transition relative flex flex-col justify-between">
