@@ -75,7 +75,7 @@
       </div>
     </div>
 
-    <!-- 📅 달력 영역 (기본은 숨김) -->
+    <!-- 📅 달력 영역 -->
     <div id="calendarView" class="hidden bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
       <div class="flex items-center justify-between">
         <button onclick="changeMonth(-1)" class="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 font-bold text-xs">◀ 이전달</button>
@@ -243,19 +243,17 @@
       if (!val) return alert('메모 내용을 입력해주세요.');
 
       if (editingMemoId) {
-        const { error } = await supabaseClient.from('content_plans').update({ title: val }).eq('id', editingMemoId);
-        if (error) return alert('메모 수정 실패: ' + error.message);
+        await supabaseClient.from('content_plans').update({ title: val }).eq('id', editingMemoId);
         editingMemoId = null;
         document.getElementById('quickMemoSaveBtn').innerText = '등록';
         document.getElementById('quickMemoLabel').innerText = '⚡ 생각나는 아이디어 빠르게 적기';
         document.getElementById('cancelMemoEditBtn').classList.add('hidden');
       } else {
-        const { error } = await supabaseClient.from('content_plans').insert([{
+        await supabaseClient.from('content_plans').insert([{
           title: val,
           memo_type: 'quick_memo',
           status: '아이디어'
         }]);
-        if (error) return alert('메모 저장 실패: ' + error.message);
       }
 
       input.value = '';
@@ -394,7 +392,7 @@
       const status = document.getElementById('inputStatus').value;
       const schedule_type = document.getElementById('inputScheduleType').value;
       const rawDueDate = document.getElementById('inputDueDate').value;
-      const due_date = rawDueDate ? rawDueDate : null; // 빈 문자열 대신 null 전달
+      const due_date = rawDueDate ? rawDueDate : null;
       const pay_amount = Number(document.getElementById('inputPayAmount').value) || 0;
       const pay_status = document.getElementById('inputPayStatus').value;
       const guide_text = document.getElementById('inputGuideText').value.trim();
@@ -402,23 +400,24 @@
       if (!title) return alert('기획 제목을 입력해주세요.');
 
       const payload = { 
-        title, platform, status, schedule_type, due_date, pay_amount, pay_status, guide_text, 
+        title, platform, status, due_date, pay_amount, pay_status, guide_text, 
         ref_ids: Array.from(selectedRefIds),
         memo_type: 'plan' 
       };
 
-      if (editingId) {
-        const { error } = await supabaseClient.from('content_plans').update(payload).eq('id', editingId);
-        if (error) {
-          alert('기획서 수정 중 오류가 발생했습니다: ' + error.message);
-          return;
-        }
-      } else {
-        const { error } = await supabaseClient.from('content_plans').insert([payload]);
-        if (error) {
-          alert('기획서 저장 중 오류가 발생했습니다: ' + error.message);
-          return;
-        }
+      let res = editingId 
+        ? await supabaseClient.from('content_plans').update({ ...payload, schedule_type }).eq('id', editingId)
+        : await supabaseClient.from('content_plans').insert([{ ...payload, schedule_type }]);
+
+      if (res.error && res.error.message.includes('schedule_type')) {
+        res = editingId 
+          ? await supabaseClient.from('content_plans').update(payload).eq('id', editingId)
+          : await supabaseClient.from('content_plans').insert([payload]);
+      }
+
+      if (res.error) {
+        alert('저장 실패: ' + res.error.message);
+        return;
       }
 
       closeModal();
@@ -428,17 +427,12 @@
     async function deleteItem(id, event = null) {
       if (event) event.stopPropagation();
       if (!confirm('삭제하시겠습니까?')) return;
-      const { error } = await supabaseClient.from('content_plans').delete().eq('id', id);
-      if (error) return alert('삭제 중 오류가 발생했습니다: ' + error.message);
+      await supabaseClient.from('content_plans').delete().eq('id', id);
       loadData();
     }
 
     async function loadData() {
-      const { data, error } = await supabaseClient.from('content_plans').select('*');
-      if (error) {
-        console.error('데이터 조회 오류:', error);
-        return;
-      }
+      const { data } = await supabaseClient.from('content_plans').select('*');
       cachedData = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       const { data: refData } = await supabaseClient.from('references').select('*');
@@ -522,6 +516,25 @@
       return `<span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold">마감지남</span>`;
     }
 
+    // 🔗 레퍼런스 원본 링크 추출 헬퍼 함수
+    function getOriginalRefUrl(ref) {
+      if (!ref) return 'https://reference-app-rho.vercel.app/';
+      
+      // 등록글에 저장된 외부 원본 주소 키값 탐색
+      let rawUrl = ref.source_url || ref.url || ref.link || ref.original_url || ref.post_url || ref.instagram_url || '';
+      
+      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
+        return 'https://reference-app-rho.vercel.app/';
+      }
+      
+      rawUrl = rawUrl.trim();
+      // http / https 프로토콜 보정
+      if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+        return 'https://' + rawUrl;
+      }
+      return rawUrl;
+    }
+
     function renderList() {
       const container = document.getElementById('contentList');
       if (currentTab === 'calendar') {
@@ -579,10 +592,11 @@
                 </div>
               ` : ''}
 
+              <!-- 🔗 레퍼런스 등록글의 실제 원본 웹페이지 링크 연결 -->
               ${linkedRefs.length > 0 ? `
                 <div class="flex flex-wrap gap-1.5 pt-0.5">
                   ${linkedRefs.map(r => {
-                    const targetUrl = r.source_url || r.url || r.link || 'https://reference-app-rho.vercel.app/';
+                    const targetUrl = getOriginalRefUrl(r);
                     return `
                       <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 text-[10px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition border border-indigo-100 dark:border-indigo-900">
                         🔗 ${r.title || '원본 링크'} ↗
