@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ko" class="antialiased">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>콘텐츠기획 창고</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <style>
+    body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28">
+
+  <!-- 상단 헤더 -->
+  <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-3">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">📝</span>
+        <h1 class="text-lg font-extrabold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+          콘텐츠기획
+        </h1>
+      </div>
+      <button onclick="openModal()" class="flex items-center gap-1 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-xs font-semibold shadow-md transition">
+        + 정식 기획 작성
+      </button>
+    </div>
+
+    <!-- 탭 선택 -->
+    <div class="max-w-md mx-auto mt-3 flex gap-2">
+      <button id="tabPlan" onclick="switchTab('plan')" class="flex-1 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white transition">
+        📋 기획 목록
+      </button>
+      <button id="tabMemo" onclick="switchTab('quick_memo')" class="flex-1 py-1.5 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition">
+        💡 간단 메모장
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto p-3.5 space-y-4">
+
+    <!-- 💰 광고 / 협찬 정산 현황 대시보드 -->
+    <div id="payDashboard" class="grid grid-cols-2 gap-2 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm text-xs">
+      <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/50 dark:border-emerald-800/50">
+        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">🟢 이번 달 입금 완료</span>
+        <span id="totalDonePay" class="text-sm font-extrabold text-emerald-700 dark:text-emerald-300">0원</span>
+      </div>
+      <div class="p-2.5 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200/50 dark:border-amber-800/50">
+        <span class="text-[10px] text-amber-600 dark:text-amber-400 font-bold block">⏳ 입금 대기 중</span>
+        <span id="totalPendingPay" class="text-sm font-extrabold text-amber-700 dark:text-amber-300">0원</span>
+      </div>
+    </div>
+
+    <!-- ⚡ 빠른 아이디어 메모 입력 창 -->
+    <div class="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-3 rounded-2xl shadow-sm space-y-2">
+      <div class="flex items-center justify-between text-xs font-bold text-amber-800 dark:text-amber-300">
+        <span>⚡ 생각나는 아이디어 빠르게 적기</span>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="quickMemoInput" placeholder="예: 봄 시즌 제주도 카페 릴스 구도 생각남..." class="flex-1 px-3 py-2 text-xs rounded-xl border border-amber-300 dark:border-amber-700 dark:bg-slate-900 focus:outline-none">
+        <button onclick="saveQuickMemo()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs whitespace-nowrap shadow">
+          등록
+        </button>
+      </div>
+    </div>
+
+    <!-- 카드 리스트 출력 영역 -->
+    <div id="contentList" class="space-y-3"></div>
+  </main>
+
+  <!-- 📝 정식 기획 등록/수정 모달 -->
+  <div id="planModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b">
+        <h2 id="modalTitle" class="text-base font-bold">📝 콘텐츠 기획서 작성</h2>
+        <button onclick="closeModal()" class="text-xl font-bold text-slate-400">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold mb-1">기획 제목 / 주제</label>
+          <input type="text" id="inputTitle" placeholder="예: 3월 여행지 추천 TOP 5 카드뉴스" class="w-full px-3 py-2 border rounded-xl dark:bg-slate-800">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold mb-1">채널 선택</label>
+            <select id="inputPlatform" class="w-full px-3 py-2 border rounded-xl dark:bg-slate-800">
+              <option value="인스타그램">📸 인스타그램</option>
+              <option value="블로그">📝 블로그</option>
+              <option value="공통">🌐 공통 (인스타+블로그)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">진행 상태</label>
+            <select id="inputStatus" class="w-full px-3 py-2 border rounded-xl dark:bg-slate-800">
+              <option value="아이디어">💡 아이디어단계</option>
+              <option value="기획중">✍️ 기획/작성 중</option>
+              <option value="발행대기">📅 발행 대기</option>
+              <option value="발행완료">✅ 발행 완료</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">📅 마감일 / 발행 예정일</label>
+          <input type="date" id="inputDueDate" class="w-full px-3 py-2 border rounded-xl dark:bg-slate-800">
+        </div>
+
+        <!-- 💰 정산 관련 입력 -->
+        <div class="grid grid-cols-2 gap-2 border-t pt-3">
+          <div>
+            <label class="block font-semibold mb-1">💵 원고료 (숫자만)</label>
+            <input type="number" id="inputPayAmount" placeholder="예: 150000" class="w-full px-3 py-2 border rounded-xl dark:bg-slate-800">
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">입금 상태</label>
+            <select id="inputPayStatus" class="w-full px-3 py-2 border rounded-xl dark:bg-slate-800">
+              <option value="대기">⏳ 입금 대기</option>
+              <option value="완료">🟢 입금 완료</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 🔗 레퍼런스모음집 연동 영역 -->
+        <div class="border-t pt-3">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="font-bold text-indigo-600 dark:text-indigo-400">✨ 레퍼런스모음집 연동</label>
+            <button type="button" onclick="openRefPicker()" class="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[11px] font-bold hover:bg-indigo-100">
+              + 레퍼런스 가져오기
+            </button>
+          </div>
+          <div id="selectedRefArea" class="flex flex-wrap gap-1">
+            <span class="text-[11px] text-slate-400">선택된 레퍼런스가 없습니다.</span>
+          </div>
+        </div>
+
+        <!-- 🤝 광고주 가이드라인 (통복붙) -->
+        <div class="border-t pt-3 space-y-2">
+          <label class="block font-bold text-indigo-600 dark:text-indigo-400">🤝 광고주 가이드라인 (선택사항)</label>
+          <div>
+            <span class="text-[11px] text-slate-400 block mb-1">가이드 텍스트 통복붙</span>
+            <textarea id="inputGuideText" rows="3" placeholder="광고주가 전달해준 필수 키워드, 가이드 문구를 통째로 붙여넣으세요." class="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 resize-none"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="savePlan()" id="saveBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-lg">
+        기획서 저장하기
+      </button>
+    </div>
+  </div>
+
+  <!-- 🔗 레퍼런스 선택 팝업 모달 -->
+  <div id="refModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md p-5 space-y-3 max-h-[70vh] flex flex-col shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b">
+        <h3 class="font-bold text-sm">✨ 레퍼런스모음집에서 선택</h3>
+        <button onclick="closeRefPicker()" class="text-lg font-bold text-slate-400">&times;</button>
+      </div>
+      <div id="refPickerList" class="flex-1 overflow-y-auto space-y-2 no-scrollbar"></div>
+      <button onclick="closeRefPicker()" class="w-full py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs">선택 완료</button>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://mvgxqnqucbcipyrwdalj.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentTab = 'plan';
+    let cachedData = [];
+    let referenceList = [];
+    let selectedRefIds = new Set();
+    let editingId = null;
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('tabPlan').className = tab === 'plan' ? 'flex-1 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white' : 'flex-1 py-1.5 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600';
+      document.getElementById('tabMemo').className = tab === 'quick_memo' ? 'flex-1 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white' : 'flex-1 py-1.5 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800 text-slate-600';
+      renderList();
+    }
+
+    async function saveQuickMemo() {
+      const input = document.getElementById('quickMemoInput');
+      if (!input.value.trim()) return alert('메모 내용을 입력해주세요.');
+
+      await supabaseClient.from('content_plans').insert([{
+        title: input.value,
+        memo_type: 'quick_memo',
+        status: '아이디어'
+      }]);
+
+      input.value = '';
+      loadData();
+    }
+
+    function openModal() {
+      editingId = null;
+      selectedRefIds.clear();
+      document.getElementById('inputTitle').value = '';
+      document.getElementById('inputGuideText').value = '';
+      document.getElementById('inputDueDate').value = '';
+      document.getElementById('inputPayAmount').value = '';
+      document.getElementById('inputPayStatus').value = '대기';
+      renderSelectedRefs();
+      document.getElementById('planModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('planModal').classList.add('hidden');
+    }
+
+    function duplicatePlan(item) {
+      editingId = null;
+      selectedRefIds = new Set(item.ref_ids || []);
+      document.getElementById('inputTitle').value = `[복사본] ${item.title || ''}`;
+      document.getElementById('inputPlatform').value = item.platform || '공통';
+      document.getElementById('inputStatus').value = '아이디어';
+      document.getElementById('inputDueDate').value = '';
+      document.getElementById('inputPayAmount').value = item.pay_amount || '';
+      document.getElementById('inputPayStatus').value = '대기';
+      document.getElementById('inputGuideText').value = item.guide_text || '';
+      renderSelectedRefs();
+      document.getElementById('planModal').classList.remove('hidden');
+    }
+
+    async function openRefPicker() {
+      if (referenceList.length === 0) {
+        const { data } = await supabaseClient.from('references').select('*');
+        referenceList = data || [];
+      }
+
+      const listContainer = document.getElementById('refPickerList');
+      listContainer.innerHTML = referenceList.map(ref => {
+        const isChecked = selectedRefIds.has(String(ref.id));
+        return `
+          <div onclick="toggleRefSelect('${ref.id}')" class="p-2.5 border rounded-xl flex items-center justify-between cursor-pointer ${isChecked ? 'border-indigo-600 bg-indigo-50/50' : ''}">
+            <div>
+              <p class="font-bold text-xs">${ref.title || '제목 없음'}</p>
+              <p class="text-[10px] text-slate-400">${(ref.tags || []).join(', ')}</p>
+            </div>
+            <input type="checkbox" ${isChecked ? 'checked' : ''} class="accent-indigo-600">
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('refModal').classList.remove('hidden');
+    }
+
+    function toggleRefSelect(id) {
+      const strId = String(id);
+      if (selectedRefIds.has(strId)) selectedRefIds.delete(strId);
+      else selectedRefIds.add(strId);
+      openRefPicker();
+      renderSelectedRefs();
+    }
+
+    function closeRefPicker() {
+      document.getElementById('refModal').classList.add('hidden');
+    }
+
+    function renderSelectedRefs() {
+      const container = document.getElementById('selectedRefArea');
+      if (selectedRefIds.size === 0) {
+        container.innerHTML = `<span class="text-[11px] text-slate-400">선택된 레퍼런스가 없습니다.</span>`;
+        return;
+      }
+
+      const selectedItems = referenceList.filter(r => selectedRefIds.has(String(r.id)));
+      container.innerHTML = selectedItems.map(r => `
+        <span class="bg-indigo-100 text-indigo-700 text-[10px] px-2 py-0.5 rounded-md font-bold">
+          #${r.title || '레퍼런스'}
+        </span>
+      `).join('');
+    }
+
+    async function savePlan() {
+      const title = document.getElementById('inputTitle').value;
+      const platform = document.getElementById('inputPlatform').value;
+      const status = document.getElementById('inputStatus').value;
+      const due_date = document.getElementById('inputDueDate').value || null;
+      const pay_amount = Number(document.getElementById('inputPayAmount').value) || 0;
+      const pay_status = document.getElementById('inputPayStatus').value;
+      const guide_text = document.getElementById('inputGuideText').value;
+
+      if (!title) return alert('제목을 입력해주세요.');
+
+      const payload = { 
+        title, platform, status, due_date, pay_amount, pay_status, guide_text, 
+        ref_ids: Array.from(selectedRefIds),
+        memo_type: 'plan' 
+      };
+
+      if (editingId) {
+        await supabaseClient.from('content_plans').update(payload).eq('id', editingId);
+      } else {
+        await supabaseClient.from('content_plans').insert([payload]);
+      }
+
+      closeModal();
+      loadData();
+    }
+
+    async function deleteItem(id) {
+      if (!confirm('삭제하시겠습니까?')) return;
+      await supabaseClient.from('content_plans').delete().eq('id', id);
+      loadData();
+    }
+
+    async function loadData() {
+      const { data } = await supabaseClient.from('content_plans').select('*');
+      cachedData = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const { data: refData } = await supabaseClient.from('references').select('*');
+      referenceList = refData || [];
+
+      calculateDashboard();
+      renderList();
+    }
+
+    function calculateDashboard() {
+      let done = 0;
+      let pending = 0;
+      cachedData.forEach(i => {
+        if (i.memo_type === 'plan' && i.pay_amount) {
+          if (i.pay_status === '완료') done += Number(i.pay_amount);
+          else pending += Number(i.pay_amount);
+        }
+      });
+      document.getElementById('totalDonePay').innerText = `${done.toLocaleString()}원`;
+      document.getElementById('totalPendingPay').innerText = `${pending.toLocaleString()}원`;
+    }
+
+    function getDDay(dateStr) {
+      if (!dateStr) return '';
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const target = new Date(dateStr);
+      const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+      if (diff === 0) return '<span class="bg-rose-500 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">D-Day</span>';
+      if (diff > 0) return `<span class="bg-indigo-100 text-indigo-600 text-[10px] px-1.5 py-0.5 rounded font-bold">D-${diff}</span>`;
+      return `<span class="bg-slate-300 text-slate-600 text-[10px] px-1.5 py-0.5 rounded font-bold">마감지남</span>`;
+    }
+
+    function renderList() {
+      const container = document.getElementById('contentList');
+      const filtered = cachedData.filter(i => (i.memo_type || 'plan') === currentTab);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-center py-10 text-xs text-slate-400">저장된 데이터가 없습니다.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        if (currentTab === 'quick_memo') {
+          return `
+            <div class="p-3.5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 rounded-2xl flex items-center justify-between">
+              <p class="text-xs font-medium text-slate-800 dark:text-slate-200">${item.title}</p>
+              <button onclick="deleteItem(${item.id})" class="text-slate-400 hover:text-rose-500 text-xs font-bold">&times;</button>
+            </div>
+          `;
+        }
+
+        const linkedRefs = referenceList.filter(r => (item.ref_ids || []).includes(String(r.id)));
+
+        return `
+          <div class="p-4 bg-white dark:bg-slate-900 border rounded-2xl space-y-2 shadow-sm relative">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                ${getDDay(item.due_date)}
+                <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md font-semibold">${item.platform || '공통'}</span>
+                <span class="text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 rounded-md font-semibold">${item.status}</span>
+              </div>
+              <button onclick="deleteItem(${item.id})" class="text-slate-400 hover:text-rose-500 text-sm font-bold">&times;</button>
+            </div>
+
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white leading-snug">${item.title}</h3>
+
+            ${item.pay_amount ? `
+              <div class="flex items-center gap-2 text-xs">
+                <span class="font-bold text-slate-700 dark:text-slate-300">💵 ${Number(item.pay_amount).toLocaleString()}원</span>
+                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded ${item.pay_status === '완료' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                  ${item.pay_status === '완료' ? '🟢 입금완료' : '⏳ 입금대기'}
+                </span>
+              </div>
+            ` : ''}
+
+            ${linkedRefs.length > 0 ? `
+              <div class="flex flex-wrap gap-1 pt-1">
+                ${linkedRefs.map(r => `<span class="bg-indigo-50 text-indigo-600 text-[10px] px-2 py-0.5 rounded-md font-semibold">🔗 ${r.title}</span>`).join('')}
+              </div>
+            ` : ''}
+
+            ${item.guide_text ? `
+              <div class="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line">
+                <span class="font-bold text-indigo-500 block mb-1">🤝 광고주 가이드:</span>${item.guide_text}
+              </div>
+            ` : ''}
+
+            <div class="pt-2 flex justify-end">
+              <button onclick='duplicatePlan(${JSON.stringify(item)})' class="text-[11px] font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 px-2.5 py-1 rounded-lg">
+                📋 이 기획 양식 복사
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
