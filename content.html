@@ -45,17 +45,24 @@
 
   <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
 
-    <!-- 💰 정산 현황 대시보드 (슬림 칩 스타일) -->
-    <div id="payDashboard" class="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm text-xs">
+    <!-- 💰 정산 현황 대시보드 (개선 4: 이번달/전체 토글 추가) -->
+    <div id="payDashboard" class="flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm text-xs">
       <div class="flex items-center gap-2">
         <span class="text-[11px] font-bold text-slate-400">정산현황</span>
+        
+        <!-- 이번 달 / 전체 누적 토글 버튼 -->
+        <div class="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px] font-bold">
+          <button onclick="setPayPeriod('thisMonth')" id="btnPayMonth" class="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-indigo-600 shadow-xs transition">이번 달</button>
+          <button onclick="setPayPeriod('all')" id="btnPayAll" class="px-2 py-0.5 rounded-md text-slate-500 transition">전체 누적</button>
+        </div>
+
         <div class="h-3 w-px bg-slate-200 dark:bg-slate-700"></div>
         <div class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-xl font-bold border border-emerald-200/60 dark:border-emerald-800/60">
-          <span>🟢 입금 완료</span>
+          <span>🟢 완료</span>
           <span id="totalDonePay" class="font-extrabold">0원</span>
         </div>
         <div class="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 px-2.5 py-1 rounded-xl font-bold border border-amber-200/60 dark:border-amber-800/60">
-          <span>⏳ 입금 대기</span>
+          <span>⏳ 대기</span>
           <span id="totalPendingPay" class="font-extrabold">0원</span>
         </div>
       </div>
@@ -79,7 +86,7 @@
     <div id="calendarView" class="hidden bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
       <div class="flex items-center justify-between">
         <button onclick="changeMonth(-1)" class="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 font-bold text-xs">◀ 이전달</button>
-        <h2 id="calendarTitle" class="font-black text-base text-slate-800 dark:text-slate-100">2026년 4월</h2>
+        <h2 id="calendarTitle" class="font-black text-base text-slate-800 dark:text-slate-100">2026년 8월</h2>
         <button onclick="changeMonth(1)" class="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 font-bold text-xs">다음달 ▶</button>
       </div>
 
@@ -99,25 +106,47 @@
       <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-xs"></div>
     </div>
 
-    <!-- 🏷️ 기획 유형 필터 & 선택 삭제 바 -->
-    <div id="bulkActionBar" class="flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm text-xs">
-      <div class="flex items-center gap-3">
-        <label class="flex items-center gap-1.5 cursor-pointer font-bold text-slate-600 dark:text-slate-300">
-          <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="w-4 h-4 rounded accent-indigo-600">
-          <span>전체 선택</span>
-        </label>
-        
-        <!-- 🎯 자체/광고 필터 버튼 그룹 (기획 목록 탭에서만 활성) -->
-        <div id="planFilterGroup" class="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl gap-0.5 text-[11px] font-bold">
-          <button onclick="setPlanTypeFilter('all')" id="btnFilterAll" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 text-indigo-600 shadow-sm transition">전체</button>
-          <button onclick="setPlanTypeFilter('own')" id="btnFilterOwn" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 transition">🌱 자체콘텐츠</button>
-          <button onclick="setPlanTypeFilter('ad')" id="btnFilterAd" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 transition">💵 광고/협찬</button>
+    <!-- 🔍 검색 & 필터 & 선택 삭제 통합 컨트롤 바 (개선 2) -->
+    <div id="bulkActionBar" class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+      
+      <!-- 상단: 검색창 & 선택삭제/전체선택 -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+          <div class="relative flex-1 max-w-sm">
+            <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="🔍 기획 제목, 가이드 키워드 검색..." class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1.5 cursor-pointer font-bold text-xs text-slate-600 dark:text-slate-300">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="w-4 h-4 rounded accent-indigo-600">
+            <span>전체선택</span>
+          </label>
+          <button onclick="deleteSelectedItems()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 rounded-xl text-xs font-bold transition flex items-center gap-1">
+            🗑️ <span id="selectedCountText">선택 삭제 (0)</span>
+          </button>
         </div>
       </div>
 
-      <button onclick="deleteSelectedItems()" class="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 rounded-xl font-bold transition flex items-center gap-1">
-        🗑️ <span id="selectedCountText">선택 삭제 (0)</span>
-      </button>
+      <!-- 하단: 기획 탭 전용 필터 칩 (자체/광고 + 진행상태) -->
+      <div id="planFilterGroup" class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+        <!-- 자체 / 광고 분류 -->
+        <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl gap-0.5 font-bold">
+          <button onclick="setPlanTypeFilter('all')" id="btnFilterAll" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 text-indigo-600 shadow-sm transition">전체</button>
+          <button onclick="setPlanTypeFilter('own')" id="btnFilterOwn" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 transition">🌱 자체</button>
+          <button onclick="setPlanTypeFilter('ad')" id="btnFilterAd" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 transition">💵 광고/협찬</button>
+        </div>
+
+        <!-- 진행 상태 필터 칩 -->
+        <div class="flex items-center gap-1 overflow-x-auto no-scrollbar font-bold">
+          <button onclick="setStatusFilter('all')" id="stFilter_all" class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200/60 transition">전체상태</button>
+          <button onclick="setStatusFilter('아이디어')" id="stFilter_아이디어" class="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200/60 transition">💡 아이디어</button>
+          <button onclick="setStatusFilter('기획중')" id="stFilter_기획중" class="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200/60 transition">✍️ 기획중</button>
+          <button onclick="setStatusFilter('발행대기')" id="stFilter_발행대기" class="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200/60 transition">📅 발행대기</button>
+          <button onclick="setStatusFilter('발행완료')" id="stFilter_발행완료" class="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200/60 transition">✅ 발행완료</button>
+        </div>
+      </div>
     </div>
 
     <!-- 카드 리스트 출력 영역 (모바일: 2열 / PC: 4열) -->
@@ -138,7 +167,7 @@
           <input type="text" id="inputTitle" placeholder="예: 3월 여행지 추천 TOP 5 카드뉴스" class="w-full px-3.5 py-2.5 border rounded-xl dark:bg-slate-800 focus:outline-none">
         </div>
 
-        <!-- 🌟 콘텐츠 유형 선택 (자체 콘텐츠 vs 광고/협찬) -->
+        <!-- 🌟 콘텐츠 유형 선택 -->
         <div class="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-700">
           <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">콘텐츠 분류</label>
           <div class="grid grid-cols-2 gap-2">
@@ -190,7 +219,7 @@
           </div>
         </div>
 
-        <!-- 💰 정산 관련 입력 (광고/협찬일 때만 활성화) -->
+        <!-- 💰 정산 관련 입력 -->
         <div id="payInputSection" class="hidden grid grid-cols-2 gap-2 border-t pt-3">
           <div>
             <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">💵 원고료 (숫자만)</label>
@@ -249,7 +278,11 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentTab = 'plan';
-    let planTypeFilter = 'all'; // 'all', 'own' (자체), 'ad' (광고)
+    let planTypeFilter = 'all'; // 'all', 'own', 'ad'
+    let statusFilter = 'all';   // 'all', '아이디어', '기획중', '발행대기', '발행완료'
+    let searchKeyword = '';
+    let payPeriodMode = 'thisMonth'; // 'thisMonth', 'all'
+
     let cachedData = [];
     let referenceList = [];
     let selectedRefIds = new Set();
@@ -287,6 +320,14 @@
       renderList();
     }
 
+    // 🔍 검색 & 필터 핸들러
+    function handleSearch(val) {
+      searchKeyword = val.trim().toLowerCase();
+      selectedItemIds.clear();
+      updateSelectedCount();
+      renderList();
+    }
+
     function setPlanTypeFilter(type) {
       planTypeFilter = type;
       ['all', 'own', 'ad'].forEach(t => {
@@ -300,6 +341,34 @@
       selectedItemIds.clear();
       updateSelectedCount();
       renderList();
+    }
+
+    function setStatusFilter(st) {
+      statusFilter = st;
+      const allStatuses = ['all', '아이디어', '기획중', '발행대기', '발행완료'];
+      allStatuses.forEach(s => {
+        const btn = document.getElementById('stFilter_' + s);
+        if (s === st) {
+          btn.className = 'px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-300 font-extrabold transition';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200/60 font-bold transition';
+        }
+      });
+      selectedItemIds.clear();
+      updateSelectedCount();
+      renderList();
+    }
+
+    // 💰 정산 기간 토글 (개선 4)
+    function setPayPeriod(period) {
+      payPeriodMode = period;
+      document.getElementById('btnPayMonth').className = period === 'thisMonth' 
+        ? 'px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-indigo-600 shadow-xs transition font-extrabold'
+        : 'px-2 py-0.5 rounded-md text-slate-500 transition font-medium';
+      document.getElementById('btnPayAll').className = period === 'all' 
+        ? 'px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 text-indigo-600 shadow-xs transition font-extrabold'
+        : 'px-2 py-0.5 rounded-md text-slate-500 transition font-medium';
+      calculateDashboard();
     }
 
     function togglePayFields(isAd) {
@@ -322,13 +391,29 @@
 
     function getCurrentlyFilteredData() {
       let filtered = cachedData.filter(i => (i.memo_type || 'plan') === currentTab);
+      
       if (currentTab === 'plan') {
+        // 1) 자체 / 광고 필터
         if (planTypeFilter === 'own') {
           filtered = filtered.filter(i => !i.pay_amount || Number(i.pay_amount) === 0);
         } else if (planTypeFilter === 'ad') {
           filtered = filtered.filter(i => i.pay_amount && Number(i.pay_amount) > 0);
         }
+
+        // 2) 상태 필터
+        if (statusFilter !== 'all') {
+          filtered = filtered.filter(i => i.status === statusFilter);
+        }
       }
+
+      // 3) 검색어 필터
+      if (searchKeyword) {
+        filtered = filtered.filter(i => 
+          (i.title && i.title.toLowerCase().includes(searchKeyword)) ||
+          (i.guide_text && i.guide_text.toLowerCase().includes(searchKeyword))
+        );
+      }
+
       return filtered;
     }
 
@@ -367,6 +452,44 @@
       selectedItemIds.clear();
       updateSelectedCount();
       loadData();
+    }
+
+    // 💡 개선 1: 간단 메모 ➔ 정식 기획 원클릭 전환
+    function convertMemoToPlan(memoTitle, memoId, event) {
+      if (event) event.stopPropagation();
+      openModal();
+      document.getElementById('inputTitle').value = memoTitle;
+    }
+
+    // ⚡ 개선 3: 카드에서 상태 즉시 변경
+    async function quickUpdateStatus(id, currentStatus, event) {
+      if (event) event.stopPropagation();
+      const statusOrder = ['아이디어', '기획중', '발행대기', '발행완료'];
+      const nextIdx = (statusOrder.indexOf(currentStatus) + 1) % statusOrder.length;
+      const nextStatus = statusOrder[nextIdx];
+
+      const { error } = await supabaseClient.from('content_plans').update({ status: nextStatus }).eq('id', id);
+      if (error) return alert('상태 변경 실패: ' + error.message);
+      loadData();
+    }
+
+    // ⚡ 개선 3: 카드에서 입금 상태 즉시 토글
+    async function quickTogglePayStatus(id, currentPayStatus, event) {
+      if (event) event.stopPropagation();
+      const nextPayStatus = currentPayStatus === '완료' ? '대기' : '완료';
+      const { error } = await supabaseClient.from('content_plans').update({ pay_status: nextPayStatus }).eq('id', id);
+      if (error) return alert('입금 상태 변경 실패: ' + error.message);
+      loadData();
+    }
+
+    // 📋 개선 5: 가이드 원클릭 복사
+    function copyGuideText(text, event) {
+      if (event) event.stopPropagation();
+      navigator.clipboard.writeText(text).then(() => {
+        alert('📋 가이드 내용이 복사되었습니다!');
+      }).catch(() => {
+        alert('복사 실패');
+      });
     }
 
     async function saveQuickMemo() {
@@ -599,8 +722,16 @@
     function calculateDashboard() {
       let done = 0;
       let pending = 0;
+
+      const currentYearMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+
       cachedData.forEach(i => {
         if (i.memo_type === 'plan' && i.pay_amount) {
+          // 이번달 필터링 모드일 때 마감일(due_date)이 이번달에 속하는지 체크
+          if (payPeriodMode === 'thisMonth') {
+            if (!i.due_date || !i.due_date.startsWith(currentYearMonth)) return;
+          }
+
           if (i.pay_status === '완료') done += Number(i.pay_amount);
           else pending += Number(i.pay_amount);
         }
@@ -699,7 +830,7 @@
       const filtered = getCurrentlyFilteredData();
 
       if (filtered.length === 0) {
-        container.innerHTML = `<p class="col-span-full text-center py-12 text-xs text-slate-400 font-medium">저장된 데이터가 없습니다.</p>`;
+        container.innerHTML = `<p class="col-span-full text-center py-12 text-xs text-slate-400 font-medium">저장되거나 검색된 데이터가 없습니다.</p>`;
         return;
       }
 
@@ -708,12 +839,21 @@
 
         if (currentTab === 'quick_memo') {
           return `
-            <div class="col-span-1 p-4 bg-amber-50/70 dark:bg-amber-950/20 border ${isChecked ? 'border-amber-500 ring-2 ring-amber-400/40' : 'border-amber-200/80'} rounded-2xl flex items-center justify-between gap-2 shadow-sm transition">
-              <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectItem(${item.id}, this.checked, event)" class="w-4 h-4 rounded accent-amber-600 flex-shrink-0 cursor-pointer">
-              <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 flex-1 leading-relaxed">${item.title}</p>
-              <div class="flex items-center gap-1 flex-shrink-0">
-                <button onclick="editQuickMemo(${item.id}, '${item.title.replace(/'/g, "\\'")}')" class="p-1 hover:bg-amber-200/50 rounded-lg text-slate-500 hover:text-amber-700 text-xs font-bold transition">✏️</button>
-                <button onclick="deleteItem(${item.id}, event)" class="p-1 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-500 text-sm font-bold transition">&times;</button>
+            <div class="col-span-1 p-4 bg-amber-50/70 dark:bg-amber-950/20 border ${isChecked ? 'border-amber-500 ring-2 ring-amber-400/40' : 'border-amber-200/80'} rounded-2xl flex flex-col justify-between gap-3 shadow-sm transition">
+              <div class="flex items-start gap-2">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectItem(${item.id}, this.checked, event)" class="w-4 h-4 rounded accent-amber-600 flex-shrink-0 cursor-pointer mt-0.5">
+                <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 flex-1 leading-relaxed">${item.title}</p>
+              </div>
+              
+              <!-- 하단 빠른 액션 바 (기획 전환 / 수정 / 삭제) -->
+              <div class="flex items-center justify-between pt-2 border-t border-amber-200/50">
+                <button onclick="convertMemoToPlan('${item.title.replace(/'/g, "\\'")}', ${item.id}, event)" class="text-[10px] font-bold text-amber-800 bg-amber-200/60 hover:bg-amber-300/60 px-2 py-1 rounded-lg transition flex items-center gap-1">
+                  📋 기획 전환
+                </button>
+                <div class="flex items-center gap-1">
+                  <button onclick="editQuickMemo(${item.id}, '${item.title.replace(/'/g, "\\'")}')" class="p-1 hover:bg-amber-200/50 rounded-lg text-slate-500 hover:text-amber-700 text-xs font-bold transition">✏️</button>
+                  <button onclick="deleteItem(${item.id}, event)" class="p-1 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-500 text-sm font-bold transition">&times;</button>
+                </div>
               </div>
             </div>
           `;
@@ -730,7 +870,12 @@
                   <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectItem(${item.id}, this.checked, event)" class="w-4 h-4 rounded accent-indigo-600 mr-0.5 cursor-pointer">
                   ${getDDay(item.due_date)}
                   <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md font-bold">${item.platform || '공통'}</span>
-                  <span class="text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-950/80 dark:text-indigo-300 px-2 py-0.5 rounded-md font-bold">${item.status}</span>
+                  
+                  <!-- ⚡ 상태 뱃지 클릭 시 즉시 다음 상태로 변경 -->
+                  <button onclick="quickUpdateStatus(${item.id}, '${item.status}', event)" title="클릭하여 상태 변경" class="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/80 dark:text-indigo-300 px-2 py-0.5 rounded-md font-bold transition active:scale-95">
+                    ${item.status} ↻
+                  </button>
+
                   ${!isAdContent ? '<span class="text-[10px] bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300 px-2 py-0.5 rounded-md font-bold">🌱 자체제작</span>' : ''}
                 </div>
                 <div class="flex items-center gap-1">
@@ -746,13 +891,14 @@
               ${isAdContent ? `
                 <div class="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl">
                   <span class="font-extrabold text-slate-800 dark:text-slate-200">💵 ${Number(item.pay_amount).toLocaleString()}원</span>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${item.pay_status === '완료' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
-                    ${item.pay_status === '완료' ? '🟢 완료' : '⏳ 대기'}
-                  </span>
+                  <!-- ⚡ 입금 상태 뱃지 클릭 시 즉시 변경 -->
+                  <button onclick="quickTogglePayStatus(${item.id}, '${item.pay_status || '대기'}', event)" title="클릭하여 입금상태 변경" class="text-[10px] font-bold px-2 py-0.5 rounded-md transition active:scale-95 ${item.pay_status === '완료' ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700' : 'bg-amber-100 hover:bg-amber-200 text-amber-700'}">
+                    ${item.pay_status === '완료' ? '🟢 완료' : '⏳ 대기'} ↻
+                  </button>
                 </div>
               ` : ''}
 
-              <!-- 🔗 레퍼런스 창고의 '링크 바로가기'와 동일한 원본 링크 새창 실행 버튼 -->
+              <!-- 🔗 레퍼런스 창고 원본 링크 바로가기 -->
               ${linkedRefs.length > 0 ? `
                 <div class="flex flex-wrap gap-1.5 pt-0.5">
                   ${linkedRefs.map(r => `
@@ -763,9 +909,16 @@
                 </div>
               ` : ''}
 
+              <!-- 📋 가이드라인 문구 및 원클릭 복사 버튼 -->
               ${item.guide_text ? `
-                <div class="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                  <span class="font-extrabold text-indigo-600 dark:text-indigo-400 block mb-0.5">🤝 메모:</span>${item.guide_text}
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300 relative group">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="font-extrabold text-indigo-600 dark:text-indigo-400">🤝 가이드/메모:</span>
+                    <button onclick="copyGuideText('${item.guide_text.replace(/'/g, "\\'").replace(/\n/g, "\\n")}', event)" class="text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition">
+                      📋 복사
+                    </button>
+                  </div>
+                  <p class="whitespace-pre-line leading-relaxed line-clamp-3">${item.guide_text}</p>
                 </div>
               ` : ''}
             </div>
