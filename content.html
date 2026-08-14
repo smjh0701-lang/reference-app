@@ -45,7 +45,7 @@
 
   <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
 
-    <!-- 💰 광고 / 협찬 정산 현황 대시보드 (슬림 칩 스타일) -->
+    <!-- 💰 정산 현황 대시보드 (슬림 칩 스타일) -->
     <div id="payDashboard" class="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm text-xs">
       <div class="flex items-center gap-2">
         <span class="text-[11px] font-bold text-slate-400">정산현황</span>
@@ -83,7 +83,7 @@
         <button onclick="changeMonth(1)" class="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 font-bold text-xs">다음달 ▶</button>
       </div>
 
-      <!-- 🎨 일정 유형 범례 표 -->
+      <!-- 일정 유형 범례 표 -->
       <div class="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-[11px] font-bold border border-slate-100 dark:border-slate-800">
         <span class="text-slate-400 font-bold">구분 색상:</span>
         <span class="bg-emerald-500 text-white px-2 py-0.5 rounded">🟩 블로그 방문일</span>
@@ -516,23 +516,26 @@
       return `<span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold">마감지남</span>`;
     }
 
-    // 🔗 레퍼런스 원본 링크 추출 헬퍼 함수
-    function getOriginalRefUrl(ref) {
-      if (!ref) return 'https://reference-app-rho.vercel.app/';
-      
-      // 등록글에 저장된 외부 원본 주소 키값 탐색
-      let rawUrl = ref.source_url || ref.url || ref.link || ref.original_url || ref.post_url || ref.instagram_url || '';
-      
-      if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
-        return 'https://reference-app-rho.vercel.app/';
+    // 🚀 레퍼런스 창고의 [링크 바로가기 ↗]와 100% 동일한 새창 이동 실행 함수
+    function goToRefLink(refId, event) {
+      if (event) event.stopPropagation();
+      const ref = referenceList.find(r => String(r.id) === String(refId));
+      if (!ref) return;
+
+      // references 테이블에 저장된 링크 값 추출
+      let targetUrl = ref.link || ref.url || ref.source_url || ref.link_url || ref.original_url || ref.post_url || '';
+
+      if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.trim()) {
+        alert('이 레퍼런스에 등록된 바로가기 링크가 없습니다.');
+        return;
       }
-      
-      rawUrl = rawUrl.trim();
-      // http / https 프로토콜 보정
-      if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-        return 'https://' + rawUrl;
+
+      targetUrl = targetUrl.trim();
+      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        targetUrl = 'https://' + targetUrl;
       }
-      return rawUrl;
+
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
     }
 
     function renderList() {
@@ -592,17 +595,14 @@
                 </div>
               ` : ''}
 
-              <!-- 🔗 레퍼런스 등록글의 실제 원본 웹페이지 링크 연결 -->
+              <!-- 🔗 레퍼런스 창고의 '링크 바로가기'와 동일한 원본 링크 새창 실행 버튼 -->
               ${linkedRefs.length > 0 ? `
                 <div class="flex flex-wrap gap-1.5 pt-0.5">
-                  ${linkedRefs.map(r => {
-                    const targetUrl = getOriginalRefUrl(r);
-                    return `
-                      <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 text-[10px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition border border-indigo-100 dark:border-indigo-900">
-                        🔗 ${r.title || '원본 링크'} ↗
-                      </a>
-                    `;
-                  }).join('')}
+                  ${linkedRefs.map(r => `
+                    <button type="button" onclick="goToRefLink('${r.id}', event)" class="bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 text-[10px] px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition border border-indigo-100 dark:border-indigo-900 cursor-pointer">
+                      🔗 ${r.title || '링크 바로가기'} ↗
+                    </button>
+                  `).join('')}
                 </div>
               ` : ''}
 
