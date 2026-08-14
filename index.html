@@ -2,7 +2,7 @@
 <html lang="ko" class="antialiased">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>랍땡이의 레퍼런스 창고</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,36 +16,36 @@
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28">
 
   <!-- 상단 헤더 -->
-  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-6 py-4 shadow-sm">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">📁</span>
-        <h1 class="text-xl font-black tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-8 py-3.5 shadow-sm">
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl sm:text-2xl">📁</span>
+        <h1 class="text-base sm:text-xl font-black tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
           랍땡이의 레퍼런스 창고
         </h1>
       </div>
-      <button onclick="openModal()" class="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full text-xs font-bold shadow-md transition">
+      <button onclick="openModal()" class="flex items-center gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full text-xs font-bold shadow-md transition">
         <span>+</span> 레퍼런스 추가
       </button>
     </div>
 
     <!-- 검색 및 태그 필터 -->
-    <div class="max-w-7xl mx-auto mt-4 space-y-3">
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-3 space-y-2">
       <div class="relative">
-        <input type="text" id="searchInput" oninput="renderList()" placeholder="🔍 레퍼런스 제목, 태그, 메모 검색..." class="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-transparent dark:border-slate-700">
+        <input type="text" id="searchInput" oninput="renderList()" placeholder="🔍 레퍼런스 제목, 태그, 메모 검색..." class="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-transparent dark:border-slate-700">
       </div>
       <div id="tagFilterList" class="flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto p-6">
-    <!-- 카드 리스트 출력 영역 (PC 3~4열 그리드, 모바일 1열) -->
-    <div id="referenceList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+  <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-4 sm:p-6">
+    <!-- 카드 리스트 출력 영역 (모바일: 1열, PC: 널찍한 그리드) -->
+    <div id="referenceList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
   </main>
 
   <!-- 📝 레퍼런스 등록/수정 모달 -->
-  <div id="refModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+  <div id="refModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md sm:max-w-lg p-6 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b">
         <h2 id="modalTitle" class="text-base font-extrabold">📁 레퍼런스 등록</h2>
         <button onclick="closeModal()" class="text-xl font-bold text-slate-400 hover:text-slate-600">&times;</button>
@@ -67,9 +67,18 @@
           <input type="text" id="inputTags" placeholder="예: 릴스, 캡컷, 텍스트효과" class="w-full px-3.5 py-2.5 border rounded-xl dark:bg-slate-800 focus:outline-none">
         </div>
 
+        <!-- 📷 이미지 다중 첨부 (복사/붙여넣기 및 파일선택) -->
         <div>
-          <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">📷 사진 캡처 이미지 URL</label>
-          <input type="url" id="inputImageUrl" placeholder="https://... 이미지 주소 붙여넣기" class="w-full px-3.5 py-2.5 border rounded-xl dark:bg-slate-800 focus:outline-none">
+          <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">📷 이미지 캡처/첨부 (여러 장 붙여넣기 가능)</label>
+          <div id="imageDropArea" class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center cursor-pointer hover:border-indigo-500 transition bg-slate-50 dark:bg-slate-800/50" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+            <div id="uploadPrompt" class="space-y-1">
+              <span class="text-xl block">🖼️</span>
+              <p class="font-bold text-slate-600 dark:text-slate-300">클릭하여 이미지 선택 또는 <span class="text-indigo-600">Ctrl+V</span>로 붙여넣기</p>
+            </div>
+          </div>
+          <!-- 이미지 썸네일 표시 목록 -->
+          <div id="previewList" class="flex flex-wrap gap-2 mt-2"></div>
         </div>
 
         <div>
@@ -92,6 +101,56 @@
     let referenceList = [];
     let selectedTag = 'ALL';
     let editingId = null;
+    let imageList = [];
+
+    // 클립보드 이미지 붙여넣기
+    window.addEventListener('paste', function(e) {
+      const modal = document.getElementById('refModal');
+      if (modal.classList.contains('hidden')) return;
+
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          readAndAddImage(blob);
+        }
+      }
+    });
+
+    function handleFileSelect(e) {
+      const files = e.target.files;
+      if (files) {
+        Array.from(files).forEach(file => readAndAddImage(file));
+      }
+    }
+
+    function readAndAddImage(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imageList.push(e.target.result);
+        renderImagePreviews();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage(index) {
+      imageList.splice(index, 1);
+      renderImagePreviews();
+    }
+
+    function renderImagePreviews() {
+      const container = document.getElementById('previewList');
+      if (imageList.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = imageList.map((img, idx) => `
+        <div class="relative w-16 h-16 rounded-xl border overflow-hidden group">
+          <img src="${img}" class="w-full h-full object-cover">
+          <button type="button" onclick="removeImage(${idx})" class="absolute top-0 right-0 bg-rose-500 text-white w-4 h-4 text-[10px] flex items-center justify-center font-bold rounded-bl-lg">&times;</button>
+        </div>
+      `).join('');
+    }
 
     function openModal(item = null) {
       if (item) {
@@ -101,8 +160,15 @@
         document.getElementById('inputTitle').value = item.title || '';
         document.getElementById('inputUrl').value = item.url || '';
         document.getElementById('inputTags').value = (item.tags || []).join(', ');
-        document.getElementById('inputImageUrl').value = (item.image_urls && item.image_urls.length > 0) ? item.image_urls[0] : (item.image_url || '');
         document.getElementById('inputMemo').value = item.memo || '';
+        
+        imageList = [];
+        if (item.image_urls && item.image_urls.length > 0) {
+          imageList = [...item.image_urls];
+        } else if (item.image_url) {
+          imageList = [item.image_url];
+        }
+        renderImagePreviews();
       } else {
         editingId = null;
         document.getElementById('modalTitle').innerText = '📁 레퍼런스 등록';
@@ -110,8 +176,9 @@
         document.getElementById('inputTitle').value = '';
         document.getElementById('inputUrl').value = '';
         document.getElementById('inputTags').value = '';
-        document.getElementById('inputImageUrl').value = '';
         document.getElementById('inputMemo').value = '';
+        imageList = [];
+        renderImagePreviews();
       }
       document.getElementById('refModal').classList.remove('hidden');
     }
@@ -124,15 +191,20 @@
       const title = document.getElementById('inputTitle').value;
       const url = document.getElementById('inputUrl').value;
       const tagsRaw = document.getElementById('inputTags').value;
-      const imgUrl = document.getElementById('inputImageUrl').value;
       const memo = document.getElementById('inputMemo').value;
 
       if (!title) return alert('제목을 입력해주세요.');
 
       const tags = tagsRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
-      const image_urls = imgUrl ? [imgUrl] : [];
 
-      const payload = { title, url, tags, image_urls, memo };
+      const payload = { 
+        title, 
+        url, 
+        tags, 
+        image_urls: imageList, 
+        image_url: imageList[0] || null,
+        memo 
+      };
 
       if (editingId) {
         await supabaseClient.from('references').update(payload).eq('id', editingId);
@@ -208,18 +280,22 @@
       }
 
       container.innerHTML = filtered.map(item => {
-        const firstImg = (item.image_urls && item.image_urls.length > 0) ? item.image_urls[0] : (item.image_url || '');
+        const imgs = (item.image_urls && item.image_urls.length > 0) ? item.image_urls : (item.image_url ? [item.image_url] : []);
 
         return `
           <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
             <div>
-              ${firstImg ? `
-                <div class="h-48 overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
-                  <img src="${firstImg}" class="w-full h-full object-cover">
+              ${imgs.length > 0 ? `
+                <div class="flex overflow-x-auto no-scrollbar gap-1 p-1 bg-slate-100 dark:bg-slate-800 snap-x">
+                  ${imgs.map(img => `
+                    <div class="h-48 flex-shrink-0 w-full snap-center rounded-xl overflow-hidden">
+                      <img src="${img}" class="w-full h-full object-cover">
+                    </div>
+                  `).join('')}
                 </div>
               ` : ''}
 
-              <div class="p-5 space-y-3">
+              <div class="p-4 sm:p-5 space-y-3">
                 <div class="flex items-start justify-between gap-2">
                   <h3 class="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">${item.title}</h3>
                   <div class="flex items-center gap-1 flex-shrink-0">
@@ -229,7 +305,7 @@
                 </div>
 
                 ${item.memo ? `
-                  <p class="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 leading-relaxed">${item.memo}</p>
+                  <p class="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800 leading-relaxed whitespace-pre-line">${item.memo}</p>
                 ` : ''}
 
                 ${(item.tags && item.tags.length > 0) ? `
