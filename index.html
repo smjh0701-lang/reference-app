@@ -11,16 +11,20 @@
     body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* PC 대응 레이아웃 열 수 확장 */
     .masonry-grid { column-count: 2; column-gap: 14px; }
     @media (min-width: 640px) { .masonry-grid { column-count: 3; column-gap: 18px; } }
+    @media (min-width: 1024px) { .masonry-grid { column-count: 4; column-gap: 20px; } }
+    @media (min-width: 1280px) { .masonry-grid { column-count: 5; column-gap: 22px; } }
     .masonry-item { break-inside: avoid; margin-bottom: 14px; }
   </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-300">
 
-  <!-- 헤더 -->
-  <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 px-4 py-3">
-    <div class="max-w-md mx-auto flex items-center justify-between">
+  <!-- 헤더 (PC 반응형 너비 확장) -->
+  <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 px-4 sm:px-8 py-3">
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="text-xl">✨</span>
         <h1 class="text-lg font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
@@ -42,7 +46,7 @@
     </div>
     
     <!-- 카테고리 필터 버튼 영역 -->
-    <div class="max-w-md mx-auto mt-2.5 flex items-center justify-between gap-2">
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 flex items-center justify-between gap-2">
       <button onclick="toggleFilterDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition">
         <span>🏷️ 카테고리 선택</span>
         <span id="filterBadge" class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">전체</span>
@@ -53,7 +57,7 @@
     </div>
 
     <!-- 접이식 카테고리 태그 선택창 -->
-    <div id="filterDrawer" class="max-w-md mx-auto mt-2.5 hidden bg-slate-100/90 dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 backdrop-blur">
+    <div id="filterDrawer" class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 hidden bg-slate-100/90 dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 backdrop-blur">
       <div class="text-[11px] font-bold text-slate-400 mb-2 flex justify-between items-center">
         <span>한 눈에 보는 카테고리 (복수 선택 가능)</span>
         <button onclick="resetTags()" class="text-indigo-500 hover:underline">초기화</button>
@@ -62,8 +66,8 @@
     </div>
   </header>
 
-  <!-- 메인 그리드 영역 -->
-  <main class="max-w-md mx-auto p-3.5">
+  <!-- 메인 그리드 영역 (PC 반응형 너비 확장) -->
+  <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-3.5 sm:p-6">
     <div id="cardGrid" class="masonry-grid"></div>
   </main>
 
