@@ -99,6 +99,17 @@
       <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-xs"></div>
     </div>
 
+    <!-- 🗑️ 선택 삭제 및 전체 선택 제어 바 -->
+    <div id="bulkActionBar" class="flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm text-xs">
+      <label class="flex items-center gap-2 cursor-pointer font-bold text-slate-600 dark:text-slate-300">
+        <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="w-4 h-4 rounded accent-indigo-600">
+        <span>전체 선택</span>
+      </label>
+      <button onclick="deleteSelectedItems()" class="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 rounded-xl font-bold transition flex items-center gap-1">
+        🗑️ <span id="selectedCountText">선택 삭제 (0)</span>
+      </button>
+    </div>
+
     <!-- 카드 리스트 출력 영역 (모바일: 2열 / PC: 4열) -->
     <div id="contentList" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></div>
   </main>
@@ -216,6 +227,7 @@
     let cachedData = [];
     let referenceList = [];
     let selectedRefIds = new Set();
+    let selectedItemIds = new Set(); // 🗑️ 선택 삭제 대상 Set
     let editingId = null;
     let editingMemoId = null;
 
@@ -223,18 +235,69 @@
 
     function switchTab(tab) {
       currentTab = tab;
+      selectedItemIds.clear();
+      updateSelectedCount();
+
       document.getElementById('tabPlan').className = tab === 'plan' ? 'flex-1 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-indigo-600 shadow-sm' : 'flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500';
       document.getElementById('tabCalendar').className = tab === 'calendar' ? 'flex-1 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-indigo-600 shadow-sm' : 'flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500';
       document.getElementById('tabMemo').className = tab === 'quick_memo' ? 'flex-1 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 text-amber-600 shadow-sm' : 'flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500';
 
       if (tab === 'calendar') {
         document.getElementById('calendarView').classList.remove('hidden');
+        document.getElementById('bulkActionBar').classList.add('hidden');
         renderCalendar();
       } else {
         document.getElementById('calendarView').classList.add('hidden');
+        document.getElementById('bulkActionBar').classList.remove('hidden');
       }
 
       renderList();
+    }
+
+    // 🗑️ 선택 삭제 관련 함수들
+    function toggleSelectItem(id, isChecked, event) {
+      if (event) event.stopPropagation();
+      const strId = String(id);
+      if (isChecked) selectedItemIds.add(strId);
+      else selectedItemIds.delete(strId);
+      updateSelectedCount();
+    }
+
+    function toggleSelectAll(isChecked) {
+      const filtered = cachedData.filter(i => (i.memo_type || 'plan') === currentTab);
+      if (isChecked) {
+        filtered.forEach(i => selectedItemIds.add(String(i.id)));
+      } else {
+        selectedItemIds.clear();
+      }
+      updateSelectedCount();
+      renderList();
+    }
+
+    function updateSelectedCount() {
+      const count = selectedItemIds.size;
+      const countText = document.getElementById('selectedCountText');
+      if (countText) countText.innerText = `선택 삭제 (${count})`;
+
+      const filtered = cachedData.filter(i => (i.memo_type || 'plan') === currentTab);
+      const selectAllBox = document.getElementById('selectAllCheckbox');
+      if (selectAllBox) {
+        selectAllBox.checked = filtered.length > 0 && selectedItemIds.size === filtered.length;
+      }
+    }
+
+    async function deleteSelectedItems() {
+      if (selectedItemIds.size === 0) return alert('삭제할 항목을 먼저 선택해주세요.');
+      if (!confirm(`선택한 ${selectedItemIds.size}개 항목을 모두 삭제하시겠습니까?`)) return;
+
+      const idsToDelete = Array.from(selectedItemIds);
+      const { error } = await supabaseClient.from('content_plans').delete().in('id', idsToDelete);
+      
+      if (error) return alert('삭제 실패: ' + error.message);
+
+      selectedItemIds.clear();
+      updateSelectedCount();
+      loadData();
     }
 
     async function saveQuickMemo() {
@@ -428,6 +491,8 @@
       if (event) event.stopPropagation();
       if (!confirm('삭제하시겠습니까?')) return;
       await supabaseClient.from('content_plans').delete().eq('id', id);
+      selectedItemIds.delete(String(id));
+      updateSelectedCount();
       loadData();
     }
 
@@ -440,6 +505,7 @@
 
       calculateDashboard();
       if (currentTab === 'calendar') renderCalendar();
+      updateSelectedCount();
       renderList();
     }
 
@@ -516,13 +582,11 @@
       return `<span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold">마감지남</span>`;
     }
 
-    // 🚀 레퍼런스 창고의 [링크 바로가기 ↗]와 100% 동일한 새창 이동 실행 함수
     function goToRefLink(refId, event) {
       if (event) event.stopPropagation();
       const ref = referenceList.find(r => String(r.id) === String(refId));
       if (!ref) return;
 
-      // references 테이블에 저장된 링크 값 추출
       let targetUrl = ref.link || ref.url || ref.source_url || ref.link_url || ref.original_url || ref.post_url || '';
 
       if (!targetUrl || typeof targetUrl !== 'string' || !targetUrl.trim()) {
@@ -553,13 +617,16 @@
       }
 
       container.innerHTML = filtered.map(item => {
+        const isChecked = selectedItemIds.has(String(item.id));
+
         if (currentTab === 'quick_memo') {
           return `
-            <div class="col-span-1 p-4 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-2 shadow-sm">
+            <div class="col-span-1 p-4 bg-amber-50/70 dark:bg-amber-950/20 border ${isChecked ? 'border-amber-500 ring-2 ring-amber-400/40' : 'border-amber-200/80'} rounded-2xl flex items-center justify-between gap-2 shadow-sm transition">
+              <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectItem(${item.id}, this.checked, event)" class="w-4 h-4 rounded accent-amber-600 flex-shrink-0 cursor-pointer">
               <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 flex-1 leading-relaxed">${item.title}</p>
               <div class="flex items-center gap-1 flex-shrink-0">
                 <button onclick="editQuickMemo(${item.id}, '${item.title.replace(/'/g, "\\'")}')" class="p-1 hover:bg-amber-200/50 rounded-lg text-slate-500 hover:text-amber-700 text-xs font-bold transition">✏️</button>
-                <button onclick="deleteItem(${item.id})" class="p-1 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-500 text-sm font-bold transition">&times;</button>
+                <button onclick="deleteItem(${item.id}, event)" class="p-1 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-500 text-sm font-bold transition">&times;</button>
               </div>
             </div>
           `;
@@ -568,10 +635,11 @@
         const linkedRefs = referenceList.filter(r => (item.ref_ids || []).map(String).includes(String(r.id)));
 
         return `
-          <div class="p-4 sm:p-5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl space-y-3 shadow-sm hover:shadow-md transition relative flex flex-col justify-between">
+          <div class="p-4 sm:p-5 bg-white dark:bg-slate-900 border ${isChecked ? 'border-indigo-600 ring-2 ring-indigo-500/30' : 'border-slate-200/80 dark:border-slate-800'} rounded-2xl space-y-3 shadow-sm hover:shadow-md transition relative flex flex-col justify-between">
             <div class="space-y-2.5">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5 flex-wrap">
+                  <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectItem(${item.id}, this.checked, event)" class="w-4 h-4 rounded accent-indigo-600 mr-0.5 cursor-pointer">
                   ${getDDay(item.due_date)}
                   <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-md font-bold">${item.platform || '공통'}</span>
                   <span class="text-[10px] bg-indigo-50 text-indigo-600 dark:bg-indigo-950/80 dark:text-indigo-300 px-2 py-0.5 rounded-md font-bold">${item.status}</span>
