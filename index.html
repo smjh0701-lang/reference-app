@@ -24,7 +24,7 @@
           랍땡이의 레퍼런스 창고
         </h1>
       </div>
-      <button onclick="openModal()" class="flex items-center gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full text-xs font-bold shadow-md transition">
+      <button onclick="openModalForNew()" class="flex items-center gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full text-xs font-bold shadow-md transition">
         <span>+</span> 레퍼런스 추가
       </button>
     </div>
@@ -39,7 +39,7 @@
   </header>
 
   <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-4 sm:p-6">
-    <!-- 카드 리스트 출력 영역 (모바일: 1열, PC: 널찍한 그리드) -->
+    <!-- 카드 리스트 출력 영역 -->
     <div id="referenceList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
   </main>
 
@@ -67,7 +67,7 @@
           <input type="text" id="inputTags" placeholder="예: 릴스, 캡컷, 텍스트효과" class="w-full px-3.5 py-2.5 border rounded-xl dark:bg-slate-800 focus:outline-none">
         </div>
 
-        <!-- 📷 이미지 다중 첨부 (복사/붙여넣기 및 파일선택) -->
+        <!-- 📷 이미지 다중 첨부 -->
         <div>
           <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">📷 이미지 캡처/첨부 (여러 장 붙여넣기 가능)</label>
           <div id="imageDropArea" class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center cursor-pointer hover:border-indigo-500 transition bg-slate-50 dark:bg-slate-800/50" onclick="document.getElementById('fileInput').click()">
@@ -77,7 +77,6 @@
               <p class="font-bold text-slate-600 dark:text-slate-300">클릭하여 이미지 선택 또는 <span class="text-indigo-600">Ctrl+V</span>로 붙여넣기</p>
             </div>
           </div>
-          <!-- 이미지 썸네일 표시 목록 -->
           <div id="previewList" class="flex flex-wrap gap-2 mt-2"></div>
         </div>
 
@@ -152,34 +151,43 @@
       `).join('');
     }
 
-    function openModal(item = null) {
-      if (item) {
-        editingId = item.id;
-        document.getElementById('modalTitle').innerText = '✏️ 레퍼런스 수정';
-        document.getElementById('saveBtn').innerText = '수정 완료';
-        document.getElementById('inputTitle').value = item.title || '';
-        document.getElementById('inputUrl').value = item.url || '';
-        document.getElementById('inputTags').value = (item.tags || []).join(', ');
-        document.getElementById('inputMemo').value = item.memo || '';
-        
-        imageList = [];
-        if (item.image_urls && item.image_urls.length > 0) {
-          imageList = [...item.image_urls];
-        } else if (item.image_url) {
-          imageList = [item.image_url];
-        }
-        renderImagePreviews();
-      } else {
-        editingId = null;
-        document.getElementById('modalTitle').innerText = '📁 레퍼런스 등록';
-        document.getElementById('saveBtn').innerText = '저장하기';
-        document.getElementById('inputTitle').value = '';
-        document.getElementById('inputUrl').value = '';
-        document.getElementById('inputTags').value = '';
-        document.getElementById('inputMemo').value = '';
-        imageList = [];
-        renderImagePreviews();
+    function openModalForNew() {
+      editingId = null;
+      document.getElementById('modalTitle').innerText = '📁 레퍼런스 등록';
+      document.getElementById('saveBtn').innerText = '저장하기';
+      document.getElementById('inputTitle').value = '';
+      document.getElementById('inputUrl').value = '';
+      document.getElementById('inputTags').value = '';
+      document.getElementById('inputMemo').value = '';
+      imageList = [];
+      renderImagePreviews();
+      document.getElementById('refModal').classList.remove('hidden');
+    }
+
+    function openModalById(id) {
+      const item = referenceList.find(r => String(r.id) === String(id));
+      if (!item) return;
+
+      editingId = item.id;
+      document.getElementById('modalTitle').innerText = '✏️ 레퍼런스 수정';
+      document.getElementById('saveBtn').innerText = '수정 완료';
+      document.getElementById('inputTitle').value = item.title || '';
+      
+      // 원본 URL 필드명 안전 대입 (url, link, link_url 대치)
+      const targetUrl = item.url || item.link || item.link_url || '';
+      document.getElementById('inputUrl').value = targetUrl;
+      
+      document.getElementById('inputTags').value = (item.tags || []).join(', ');
+      document.getElementById('inputMemo').value = item.memo || '';
+
+      imageList = [];
+      if (item.image_urls && item.image_urls.length > 0) {
+        imageList = [...item.image_urls];
+      } else if (item.image_url) {
+        imageList = [item.image_url];
       }
+      renderImagePreviews();
+
       document.getElementById('refModal').classList.remove('hidden');
     }
 
@@ -281,6 +289,7 @@
 
       container.innerHTML = filtered.map(item => {
         const imgs = (item.image_urls && item.image_urls.length > 0) ? item.image_urls : (item.image_url ? [item.image_url] : []);
+        const targetUrl = item.url || item.link || item.link_url || '';
 
         return `
           <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
@@ -289,7 +298,7 @@
                 <div class="flex overflow-x-auto no-scrollbar gap-1 p-1 bg-slate-100 dark:bg-slate-800 snap-x">
                   ${imgs.map(img => `
                     <div class="h-48 flex-shrink-0 w-full snap-center rounded-xl overflow-hidden">
-                      <img src="${img}" class="w-full h-full object-cover">
+                      ${targetUrl ? `<a href="${targetUrl}" target="_blank"><img src="${img}" class="w-full h-full object-cover"></a>` : `<img src="${img}" class="w-full h-full object-cover">`}
                     </div>
                   `).join('')}
                 </div>
@@ -297,10 +306,12 @@
 
               <div class="p-4 sm:p-5 space-y-3">
                 <div class="flex items-start justify-between gap-2">
-                  <h3 class="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">${item.title}</h3>
+                  <h3 class="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">
+                    ${targetUrl ? `<a href="${targetUrl}" target="_blank" class="hover:underline hover:text-indigo-600">${item.title}</a>` : item.title}
+                  </h3>
                   <div class="flex items-center gap-1 flex-shrink-0">
-                    <button onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="p-1 text-slate-400 hover:text-indigo-600 text-xs font-bold transition">✏️</button>
-                    <button onclick="deleteItem(${item.id}, event)" class="p-1 text-slate-300 hover:text-rose-500 text-base font-bold transition">&times;</button>
+                    <button onclick="openModalById('${item.id}')" class="p-1 text-slate-400 hover:text-indigo-600 text-xs font-bold transition">✏️</button>
+                    <button onclick="deleteItem('${item.id}', event)" class="p-1 text-slate-300 hover:text-rose-500 text-base font-bold transition">&times;</button>
                   </div>
                 </div>
 
@@ -316,9 +327,9 @@
               </div>
             </div>
 
-            ${item.url ? `
+            ${targetUrl ? `
               <div class="p-4 pt-0">
-                <a href="${item.url}" target="_blank" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition">
+                <a href="${targetUrl}" target="_blank" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition">
                   🔗 원본 보기 ↗
                 </a>
               </div>
