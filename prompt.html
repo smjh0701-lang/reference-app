@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko" class="antialiased">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>프롬프트 & 템플릿 보관함</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <style>
+    body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-300">
+
+  <!-- 상단 헤더 -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-8 py-3.5 shadow-sm">
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xl sm:text-2xl">⚡</span>
+        <h1 class="text-base sm:text-xl font-black tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+          프롬프트 보관함
+        </h1>
+      </div>
+      <button onclick="openModal()" class="flex items-center gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full text-xs font-bold shadow-md shadow-indigo-500/25 transition">
+        <span>+</span> 새 프롬프트 추가
+      </button>
+    </div>
+
+    <!-- 검색 및 카테고리 필터 -->
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-3 space-y-2">
+      <div class="relative">
+        <input type="text" id="searchInput" oninput="renderList()" placeholder="🔍 프롬프트 제목, 내용, 태그 검색..." class="w-full px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-transparent dark:border-slate-700">
+      </div>
+      <div id="categoryFilterList" class="flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
+    </div>
+  </header>
+
+  <!-- 메인 프롬프트 그리드 영역 (PC 대응 널찍한 반응형 그리드) -->
+  <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-4 sm:p-6">
+    <div id="promptList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"></div>
+  </main>
+
+  <!-- 📋 복사 완료 토스트 알림 플로팅 바 -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900/90 text-white dark:bg-white/90 dark:text-slate-900 px-5 py-2.5 rounded-2xl shadow-xl backdrop-blur-md flex items-center gap-2 text-xs font-extrabold transition-all duration-300 transform">
+    <span>✨</span>
+    <span id="toastMsg">클립보드에 복사되었습니다!</span>
+  </div>
+
+  <!-- 📝 프롬프트 등록 및 수정 모달 -->
+  <div id="promptModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md sm:max-w-lg p-6 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-800">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+        <h2 id="modalTitle" class="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+          <span>⚡</span> 프롬프트 등록
+        </h2>
+        <button onclick="closeModal()" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">프롬프트 제목</label>
+          <input type="text" id="inputTitle" placeholder="예: 채용공고 맞춤 자소서 분석" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">카테고리</label>
+            <select id="inputCategory" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none">
+              <option value="자소서/취업">📝 자소서/취업</option>
+              <option value="SNS/콘텐츠">📸 SNS/콘텐츠</option>
+              <option value="블로그/원고">✍️ 블로그/원고</option>
+              <option value="업무/생산성">💼 업무/생산성</option>
+              <option value="기타">💡 기타</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">간단 설명 (용도)</label>
+            <input type="text" id="inputDesc" placeholder="예: 공고 분석 후 역량 도출" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">프롬프트 템플릿 본문</label>
+          <textarea id="inputContent" rows="6" placeholder="복사해서 쓸 프롬프트 본문을 적어주세요. 변수는 [키워드], [채용공고] 형태로 적으면 편리합니다." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-mono"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">태그 (쉼표로 구분)</label>
+          <input type="text" id="inputTags" placeholder="예: 자소서, 지원동기, 취업" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none">
+        </div>
+      </div>
+
+      <button onclick="savePrompt()" id="saveBtn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-extrabold rounded-2xl text-xs shadow-lg transition">
+        저장하기
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://mvgxqnqucbcipyrwdalj.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const CATEGORIES = ['전체', '자소서/취업', 'SNS/콘텐츠', '블로그/원고', '업무/생산성', '기타'];
+    let selectedCategory = '전체';
+    let cachedPrompts = [];
+    let editingId = null;
+
+    function renderCategoryFilters() {
+      const container = document.getElementById('categoryFilterList');
+      container.innerHTML = CATEGORIES.map(cat => `
+        <button onclick="filterByCategory('${cat}')" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${selectedCategory === cat ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200'}">
+          ${cat}
+        </button>
+      `).join('');
+    }
+
+    function filterByCategory(cat) {
+      selectedCategory = cat;
+      renderCategoryFilters();
+      renderList();
+    }
+
+    async function loadData() {
+      const { data, error } = await supabaseClient.from('prompts').select('*');
+      cachedPrompts = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      renderCategoryFilters();
+      renderList();
+    }
+
+    function openModal(item = null) {
+      if (item) {
+        editingId = item.id;
+        document.getElementById('modalTitle').innerHTML = '<span>✏️</span> 프롬프트 수정';
+        document.getElementById('saveBtn').innerText = '수정 완료';
+        document.getElementById('inputTitle').value = item.title || '';
+        document.getElementById('inputCategory').value = item.category || '기타';
+        document.getElementById('inputDesc').value = item.description || '';
+        document.getElementById('inputContent').value = item.content || '';
+        document.getElementById('inputTags').value = (item.tags || []).join(', ');
+      } else {
+        editingId = null;
+        document.getElementById('modalTitle').innerHTML = '<span>⚡</span> 프롬프트 등록';
+        document.getElementById('saveBtn').innerText = '저장하기';
+        document.getElementById('inputTitle').value = '';
+        document.getElementById('inputCategory').value = '자소서/취업';
+        document.getElementById('inputDesc').value = '';
+        document.getElementById('inputContent').value = '';
+        document.getElementById('inputTags').value = '';
+      }
+      document.getElementById('promptModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('promptModal').classList.add('hidden');
+      editingId = null;
+    }
+
+    async function savePrompt() {
+      const title = document.getElementById('inputTitle').value;
+      const category = document.getElementById('inputCategory').value;
+      const description = document.getElementById('inputDesc').value;
+      const content = document.getElementById('inputContent').value;
+      const tagsRaw = document.getElementById('inputTags').value;
+
+      if (!title || !content) return alert('제목과 프롬프트 본문을 입력해주세요.');
+
+      const tags = tagsRaw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+      const payload = { title, category, description, content, tags };
+
+      if (editingId) {
+        await supabaseClient.from('prompts').update(payload).eq('id', editingId);
+      } else {
+        await supabaseClient.from('prompts').insert([payload]);
+      }
+
+      closeModal();
+      loadData();
+    }
+
+    async function deleteItem(id, event) {
+      if (event) event.stopPropagation();
+      if (!confirm('이 프롬프트를 삭제할까요?')) return;
+      await supabaseClient.from('prompts').delete().eq('id', id);
+      loadData();
+    }
+
+    function copyToClipboard(text, event) {
+      if (event) event.stopPropagation();
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('클립보드에 복사 완료! 바로 붙여넣기(Ctrl+V) 하세요 ✨');
+      }).catch(() => {
+        const t = document.createElement("textarea");
+        t.value = text;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        document.body.removeChild(t);
+        showToast('클립보드에 복사 완료! ✨');
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 2000);
+    }
+
+    function highlightVariables(text) {
+      return text.replace(/\[([^\]]+)\]/g, '<span class="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 font-bold px-1 rounded">[$1]</span>');
+    }
+
+    function renderList() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const container = document.getElementById('promptList');
+
+      const filtered = cachedPrompts.filter(item => {
+        const matchesCategory = selectedCategory === '전체' || item.category === selectedCategory;
+        const matchesSearch = (item.title || '').toLowerCase().includes(search) ||
+                              (item.description || '').toLowerCase().includes(search) ||
+                              (item.content || '').toLowerCase().includes(search) ||
+                              (item.tags || []).some(t => t.toLowerCase().includes(search));
+        return matchesCategory && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="col-span-full text-center py-20 text-xs text-slate-400 font-medium">저장된 프롬프트가 없습니다.</p>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const jsonStr = JSON.stringify(item).replace(/'/g, "&apos;");
+        const safeContent = (item.content || '').replace(/'/g, "\\'").replace(/\n/g, "\\n");
+
+        return `
+          <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-4">
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900">
+                  ${item.category || '기타'}
+                </span>
+                <div class="flex items-center gap-1">
+                  <button onclick='openModal(${jsonStr})' class="p-1 text-slate-400 hover:text-indigo-600 text-xs font-bold transition" title="수정">✏️</button>
+                  <button onclick="deleteItem(${item.id}, event)" class="p-1 text-slate-300 hover:text-rose-500 text-base font-bold transition" title="삭제">&times;</button>
+                </div>
+              </div>
+
+              <h3 class="font-black text-sm sm:text-base text-slate-900 dark:text-white leading-snug">${item.title}</h3>
+              ${item.description ? `<p class="text-xs text-slate-500 dark:text-slate-400 font-medium">${item.description}</p>` : ''}
+
+              <!-- 프롬프트 본문 상자 -->
+              <div class="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto no-scrollbar font-mono text-[11px]">
+                ${highlightVariables(item.content)}
+              </div>
+
+              ${(item.tags && item.tags.length > 0) ? `
+                <div class="flex flex-wrap gap-1 pt-1">
+                  ${item.tags.map(t => `<span class="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md font-medium">#${t}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- 원클릭 복사 버튼 -->
+            <button onclick="copyToClipboard('${safeContent}', event)" class="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 active:scale-95 text-white font-extrabold rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 transition">
+              <span>📋</span> 프롬프트 원클릭 복사
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
