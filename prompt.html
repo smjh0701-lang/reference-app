@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>프롬프트 & 템플릿 보관함</title>
+  <title>프롬프트 아카이브</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
@@ -12,88 +12,100 @@
       theme: {
         extend: {
           colors: {
-            brand: {
-              brown: '#573F33',
-              'brown-hover': '#433026',
-              cream: '#F3E0AA',
-              'cream-light': '#FDF9EE',
-              'cream-dark': '#E9D294',
-              blue: '#80A6CB',
-              'blue-light': '#E8F0F8',
-              'blue-hover': '#6C94BC'
+            pin: {
+              pink: '#FAA4B5',
+              'pink-light': '#FFF0F3',
+              fawn: '#F8B77C',
+              'fawn-light': '#FFF6EE',
+              maize: '#FFF183',
+              'maize-light': '#FFFDE8',
+              sky: '#70C1E1',
+              'sky-light': '#EEF8FC',
+              olivine: '#82BA88',
+              'olivine-light': '#F0F7F1',
+              charcoal: '#2D3139',
+              muted: '#7A828E',
+              border: '#F0EBE4'
             }
+          },
+          boxShadow: {
+            'pin': '0 8px 30px -4px rgba(45, 49, 57, 0.06), 0 2px 6px -1px rgba(45, 49, 57, 0.04)',
+            'pin-hover': '0 16px 36px -4px rgba(45, 49, 57, 0.12), 0 4px 12px -2px rgba(45, 49, 57, 0.06)'
           }
         }
       }
     }
   </script>
   <style>
-    body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    body { 
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background-color: #FAF8F5;
+    }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-brand-cream-light text-brand-brown min-h-screen pb-28">
+<body class="text-pin-charcoal min-h-screen pb-28">
 
-  <!-- 상단 헤더 -->
-  <header class="sticky top-0 z-40 bg-brand-cream-light/90 backdrop-blur-md border-b border-brand-cream-dark/50 px-4 sm:px-8 py-3.5 shadow-sm">
+  <!-- 헤더 영역 -->
+  <header class="sticky top-0 z-40 bg-[#FAF8F5]/85 backdrop-blur-xl border-b border-pin-border px-5 sm:px-10 py-4">
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-2xl bg-brand-brown flex items-center justify-center text-brand-cream shadow-md text-lg">
-          ⚡
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-pin-pink-light border border-pin-pink/40 flex items-center justify-center text-lg shadow-sm">
+          ✨
         </div>
         <div>
-          <h1 class="text-base sm:text-lg font-black tracking-tight text-brand-brown">
-            프롬프트 보관함
+          <h1 class="text-base sm:text-lg font-black tracking-tight text-pin-charcoal">
+            Prompt Archive
           </h1>
-          <p class="text-[10px] text-brand-brown/70 font-semibold leading-none">원클릭 템플릿 아카이브</p>
+          <p class="text-[10px] text-pin-muted font-medium">영감을 주는 프롬프트 큐레이션</p>
         </div>
       </div>
-      <button onclick="openModal()" class="flex items-center gap-1.5 px-4 py-2 bg-brand-brown hover:bg-brand-brown-hover active:scale-95 text-brand-cream-light rounded-2xl text-xs font-bold shadow-md transition">
+      <button onclick="openModal()" class="flex items-center gap-1.5 px-4 py-2 bg-pin-charcoal hover:bg-black text-[#FAF8F5] rounded-full text-xs font-bold transition duration-200 shadow-sm active:scale-95">
         <span>+</span> 새 프롬프트
       </button>
     </div>
 
-    <!-- 검색창 및 카테고리 필터 -->
-    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-3.5 space-y-2.5">
+    <!-- 검색창 및 핀터레스트 카테고리 필터 -->
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-4 space-y-3">
       <div class="relative">
-        <input type="text" id="searchInput" oninput="renderList()" placeholder="🔍 제목, 내용, 태그를 검색해보세요..." class="w-full px-4 py-2.5 rounded-2xl bg-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-blue border border-brand-cream-dark/60 text-brand-brown placeholder-brand-brown/40 shadow-sm">
+        <input type="text" id="searchInput" oninput="renderList()" placeholder="찾고 싶은 프롬프트의 키워드, 주제를 검색해보세요..." class="w-full px-4 py-2.5 rounded-full bg-white/80 border border-pin-border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-pin-sky/60 focus:bg-white text-pin-charcoal placeholder:text-pin-muted/60 transition shadow-sm">
       </div>
-      <div id="categoryFilterList" class="flex gap-1.5 overflow-x-auto no-scrollbar py-1"></div>
+      <div id="categoryFilterList" class="flex gap-2 overflow-x-auto no-scrollbar py-1"></div>
     </div>
   </header>
 
-  <!-- 메인 프롬프트 그리드 -->
-  <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-4 sm:p-6">
-    <div id="promptList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  <!-- 메인 프롬프트 그리드 (핀터레스트 감성 카드) -->
+  <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-4 sm:p-8">
+    <div id="promptList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
   </main>
 
   <!-- 복사 완료 토스트 알림 -->
-  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden bg-brand-brown text-brand-cream px-5 py-2.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2 text-xs font-extrabold border border-brand-cream/30 transition-all duration-300">
-    <span>✨</span>
-    <span id="toastMsg">클립보드에 복사되었습니다!</span>
+  <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden bg-pin-charcoal/95 text-white px-6 py-3 rounded-full shadow-pin-hover backdrop-blur-lg flex items-center gap-2 text-xs font-bold transition-all duration-300 transform">
+    <span>🌿</span>
+    <span id="toastMsg">클립보드에 복사되었어요! 바로 붙여넣어보세요.</span>
   </div>
 
   <!-- 프롬프트 등록 및 수정 모달 -->
-  <div id="promptModal" class="fixed inset-0 bg-brand-brown/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
-    <div class="bg-brand-cream-light rounded-t-3xl sm:rounded-3xl w-full max-w-md sm:max-w-lg p-6 space-y-4 max-h-[88vh] overflow-y-auto shadow-2xl border border-brand-cream-dark/80">
-      <div class="flex justify-between items-center pb-2 border-b border-brand-cream-dark/60">
-        <h2 id="modalTitle" class="text-base font-extrabold text-brand-brown flex items-center gap-2">
-          <span>⚡</span> 프롬프트 등록
+  <div id="promptModal" class="fixed inset-0 bg-pin-charcoal/40 backdrop-blur-md z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+    <div class="bg-[#FAF8F5] rounded-t-[32px] sm:rounded-[32px] w-full max-w-md sm:max-w-lg p-7 space-y-5 max-h-[88vh] overflow-y-auto border border-pin-border shadow-pin-hover">
+      <div class="flex justify-between items-center pb-3 border-b border-pin-border">
+        <h2 id="modalTitle" class="text-base font-extrabold text-pin-charcoal flex items-center gap-2">
+          <span>✨</span> 새 프롬프트 작성
         </h2>
-        <button onclick="closeModal()" class="p-1 text-brand-brown/50 hover:text-brand-brown text-xl font-bold">&times;</button>
+        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-white border border-pin-border text-pin-muted hover:text-pin-charcoal flex items-center justify-center text-lg font-bold transition">&times;</button>
       </div>
 
-      <div class="space-y-3 text-xs">
+      <div class="space-y-3.5 text-xs">
         <div>
-          <label class="block font-bold mb-1 text-brand-brown">프롬프트 제목</label>
-          <input type="text" id="inputTitle" placeholder="예: 자소서 인사팀 기피 말버릇 교정" class="w-full px-3.5 py-2.5 bg-white border border-brand-cream-dark/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue text-brand-brown">
+          <label class="block font-bold text-pin-charcoal mb-1">프롬프트 제목</label>
+          <input type="text" id="inputTitle" placeholder="예: 자소서 인사팀 기피 말버릇 교정" class="w-full px-4 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-medium">
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2.5">
           <div>
-            <label class="block font-bold mb-1 text-brand-brown">카테고리</label>
-            <select id="inputCategory" class="w-full px-3.5 py-2.5 bg-white border border-brand-cream-dark/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue text-brand-brown font-semibold">
+            <label class="block font-bold text-pin-charcoal mb-1">카테고리</label>
+            <select id="inputCategory" class="w-full px-3.5 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-semibold">
               <option value="자소서/취업">📝 자소서/취업</option>
               <option value="SNS/콘텐츠">📸 SNS/콘텐츠</option>
               <option value="블로그/원고">✍️ 블로그/원고</option>
@@ -102,23 +114,23 @@
             </select>
           </div>
           <div>
-            <label class="block font-bold mb-1 text-brand-brown">한줄 설명</label>
-            <input type="text" id="inputDesc" placeholder="예: 대기업 인사팀 필수 체크리스트 반영" class="w-full px-3.5 py-2.5 bg-white border border-brand-cream-dark/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue text-brand-brown">
+            <label class="block font-bold text-pin-charcoal mb-1">한줄 노트</label>
+            <input type="text" id="inputDesc" placeholder="예: 대기업 인사팀 필수 체크리스트" class="w-full px-4 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-medium">
           </div>
         </div>
 
         <div>
-          <label class="block font-bold mb-1 text-brand-brown">프롬프트 본문 ([대괄호] 변수 지원)</label>
-          <textarea id="inputContent" rows="6" placeholder="프롬프트 본문을 입력하세요. 변수는 [키워드], [내용] 형식으로 적어두면 강조 표시됩니다." class="w-full px-3.5 py-2.5 bg-white border border-brand-cream-dark/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue resize-none font-mono text-[11px] text-brand-brown"></textarea>
+          <label class="block font-bold text-pin-charcoal mb-1">프롬프트 본문 ([대괄호] 변수 강조 지원)</label>
+          <textarea id="inputContent" rows="6" placeholder="프롬프트 본문을 입력하세요. [키워드], [내용] 같은 대괄호 변수는 자동으로 예쁘게 하이라이트됩니다." class="w-full px-4 py-3 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 resize-none font-mono text-[11px] leading-relaxed text-pin-charcoal font-medium"></textarea>
         </div>
 
         <div>
-          <label class="block font-bold mb-1 text-brand-brown">태그 (쉼표로 구분)</label>
-          <input type="text" id="inputTags" placeholder="예: 자소서, 퇴고, 대기업, 필수역량" class="w-full px-3.5 py-2.5 bg-white border border-brand-cream-dark/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue text-brand-brown">
+          <label class="block font-bold text-pin-charcoal mb-1">태그 (쉼표로 구분)</label>
+          <input type="text" id="inputTags" placeholder="예: 자소서, 퇴고, 대기업, 인터뷰" class="w-full px-4 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-medium">
         </div>
       </div>
 
-      <button onclick="savePrompt()" id="saveBtn" class="w-full py-3.5 bg-brand-brown hover:bg-brand-brown-hover active:scale-95 text-brand-cream font-extrabold rounded-2xl text-xs shadow-lg transition">
+      <button onclick="savePrompt()" id="saveBtn" class="w-full py-3.5 bg-pin-charcoal hover:bg-black active:scale-98 text-[#FAF8F5] font-extrabold rounded-2xl text-xs transition duration-200 shadow-md">
         저장하기
       </button>
     </div>
@@ -200,7 +212,7 @@
     function renderCategoryFilters() {
       const container = document.getElementById('categoryFilterList');
       container.innerHTML = CATEGORIES.map(cat => `
-        <button onclick="filterByCategory('${cat}')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${selectedCategory === cat ? 'bg-brand-brown text-brand-cream shadow-sm' : 'bg-white text-brand-brown/80 border border-brand-cream-dark/60 hover:bg-brand-cream/30'}">
+        <button onclick="filterByCategory('${cat}')" class="px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 ${selectedCategory === cat ? 'bg-pin-charcoal text-white shadow-sm' : 'bg-white text-pin-muted hover:text-pin-charcoal hover:bg-pin-border/40 border border-pin-border/60'}">
           ${cat}
         </button>
       `).join('');
@@ -239,7 +251,7 @@
         document.getElementById('inputTags').value = (item.tags || []).join(', ');
       } else {
         editingId = null;
-        document.getElementById('modalTitle').innerHTML = '<span>⚡</span> 프롬프트 등록';
+        document.getElementById('modalTitle').innerHTML = '<span>✨</span> 새 프롬프트 작성';
         document.getElementById('saveBtn').innerText = '저장하기';
         document.getElementById('inputTitle').value = '';
         document.getElementById('inputCategory').value = '자소서/취업';
@@ -289,15 +301,15 @@
       const originalHtml = btnElement.innerHTML;
       
       navigator.clipboard.writeText(text).then(() => {
-        btnElement.innerHTML = '<span>✅</span> 복사 완료!';
-        btnElement.classList.replace('bg-brand-brown', 'bg-brand-blue');
-        btnElement.classList.replace('text-brand-cream', 'text-white');
-        showToast('클립보드 복사 완료! 바로 Ctrl+V 하세요 ✨');
+        btnElement.innerHTML = '<span>🌿</span> 복사 완료!';
+        btnElement.classList.replace('bg-pin-pink', 'bg-pin-olivine');
+        btnElement.classList.replace('text-pin-charcoal', 'text-white');
+        showToast('클립보드에 담겼어요! (Ctrl+V로 바로 사용)');
 
         setTimeout(() => {
           btnElement.innerHTML = originalHtml;
-          btnElement.classList.replace('bg-brand-blue', 'bg-brand-brown');
-          btnElement.classList.replace('text-white', 'text-brand-cream');
+          btnElement.classList.replace('bg-pin-olivine', 'bg-pin-pink');
+          btnElement.classList.replace('text-white', 'text-pin-charcoal');
         }, 1500);
       }).catch(() => {
         const t = document.createElement("textarea");
@@ -306,7 +318,7 @@
         t.select();
         document.execCommand('copy');
         document.body.removeChild(t);
-        showToast('클립보드 복사 완료! ✨');
+        showToast('복사 완료! ✨');
       });
     }
 
@@ -316,11 +328,21 @@
       toast.classList.remove('hidden');
       setTimeout(() => {
         toast.classList.add('hidden');
-      }, 2000);
+      }, 2200);
+    }
+
+    function getCategoryStyle(cat) {
+      switch(cat) {
+        case '자소서/취업': return 'bg-pin-sky-light text-pin-sky border-pin-sky/30';
+        case 'SNS/콘텐츠': return 'bg-pin-pink-light text-pin-pink border-pin-pink/30';
+        case '블로그/원고': return 'bg-pin-olivine-light text-pin-olivine border-pin-olivine/30';
+        case '업무/생산성': return 'bg-pin-fawn-light text-pin-fawn border-pin-fawn/30';
+        default: return 'bg-pin-maize-light text-pin-charcoal border-pin-maize/50';
+      }
     }
 
     function highlightVariables(text) {
-      return text.replace(/\[([^\]]+)\]/g, '<span class="text-brand-brown bg-brand-cream font-black px-1 py-0.5 rounded border border-brand-cream-dark/80">[$1]</span>');
+      return text.replace(/\[([^\]]+)\]/g, '<span class="text-pin-charcoal bg-pin-maize/80 font-bold px-1.5 py-0.5 rounded-md border border-pin-maize">[$1]</span>');
     }
 
     function renderList() {
@@ -337,7 +359,7 @@
       });
 
       if (filtered.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-20 text-xs text-brand-brown/50 font-medium">일치하는 프롬프트가 없습니다.</div>`;
+        container.innerHTML = `<div class="col-span-full text-center py-24 text-xs text-pin-muted font-medium">검색된 프롬프트가 없습니다.</div>`;
         return;
       }
 
@@ -346,35 +368,35 @@
         const safeContent = (item.content || '').replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\n/g, "\\n");
 
         return `
-          <div class="bg-white border border-brand-cream-dark/70 rounded-3xl p-5 shadow-sm hover:shadow-xl hover:border-brand-blue transition-all duration-300 flex flex-col justify-between space-y-4">
+          <div class="bg-white border border-pin-border rounded-[28px] p-6 shadow-pin hover:shadow-pin-hover hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4">
             <div class="space-y-3">
               <div class="flex items-center justify-between">
-                <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-brand-blue-light text-brand-brown border border-brand-blue/30">
+                <span class="text-[10px] font-extrabold px-3 py-1 rounded-full border ${getCategoryStyle(item.category)}">
                   ${item.category || '기타'}
                 </span>
                 <div class="flex items-center gap-1">
-                  <button onclick='openModal(${jsonStr})' class="p-1 text-brand-brown/50 hover:text-brand-brown text-xs font-bold transition">✏️</button>
-                  <button onclick="deleteItem(${item.id}, event)" class="p-1 text-brand-brown/30 hover:text-rose-600 text-base font-bold transition">&times;</button>
+                  <button onclick='openModal(${jsonStr})' class="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 text-pin-muted hover:text-pin-charcoal text-xs font-bold transition flex items-center justify-center">✏️</button>
+                  <button onclick="deleteItem(${item.id}, event)" class="w-7 h-7 rounded-full bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-500 text-sm font-bold transition flex items-center justify-center">&times;</button>
                 </div>
               </div>
 
               <div>
-                <h3 class="font-extrabold text-sm sm:text-base text-brand-brown leading-snug">${item.title}</h3>
-                ${item.description ? `<p class="text-xs text-brand-brown/70 mt-1 font-medium">${item.description}</p>` : ''}
+                <h3 class="font-extrabold text-base text-pin-charcoal leading-snug tracking-tight">${item.title}</h3>
+                ${item.description ? `<p class="text-xs text-pin-muted mt-1 font-medium leading-relaxed">${item.description}</p>` : ''}
               </div>
 
-              <div class="p-3.5 bg-brand-cream-light/60 rounded-2xl border border-brand-cream-dark/50 text-xs text-brand-brown whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto no-scrollbar font-mono text-[11px]">
+              <div class="p-4 bg-[#FAF8F5] rounded-2xl border border-pin-border/80 text-xs text-pin-charcoal/90 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto no-scrollbar font-mono text-[11px]">
                 ${highlightVariables(item.content)}
               </div>
 
               ${(item.tags && item.tags.length > 0) ? `
                 <div class="flex flex-wrap gap-1.5 pt-1">
-                  ${item.tags.map(t => `<span class="text-[10px] text-brand-brown/80 bg-brand-cream/50 px-2 py-0.5 rounded-md font-semibold border border-brand-cream-dark/40">#${t}</span>`).join('')}
+                  ${item.tags.map(t => `<span class="text-[10px] text-pin-muted bg-slate-100/80 px-2.5 py-1 rounded-full font-medium">#${t}</span>`).join('')}
                 </div>
               ` : ''}
             </div>
 
-            <button onclick="copyToClipboard('${safeContent}', this, event)" class="w-full py-2.5 bg-brand-brown hover:bg-brand-brown-hover active:scale-95 text-brand-cream font-extrabold rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-brand-brown/20 transition-all">
+            <button onclick="copyToClipboard('${safeContent}', this, event)" class="w-full py-3 bg-pin-pink hover:bg-pin-pink/90 active:scale-98 text-pin-charcoal font-black rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 shadow-sm">
               <span>📋</span> 프롬프트 원클릭 복사
             </button>
           </div>
