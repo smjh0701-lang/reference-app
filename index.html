@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>레퍼런스 모음집</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brandYellow: '#FBFAC6',
+            brandSky: '#A4CEE4',
+            brandSkyDark: '#6BA8C7',
+            brandSkyLight: '#EAF4F9',
+            brandYellowLight: '#FDFEEB',
+          }
+        }
+      }
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
   <style>
@@ -12,6 +28,7 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
+    /* PC 대응 레이아웃 열 수 확장 */
     .masonry-grid { column-count: 2; column-gap: 14px; }
     @media (min-width: 640px) { .masonry-grid { column-count: 3; column-gap: 18px; } }
     @media (min-width: 1024px) { .masonry-grid { column-count: 4; column-gap: 20px; } }
@@ -19,31 +36,31 @@
     .masonry-item { break-inside: avoid; margin-bottom: 14px; }
   </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-300">
+<body class="bg-[#FDFDE8]/60 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-300">
 
-  <!-- 헤더 -->
-  <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 px-4 sm:px-8 py-3">
+  <!-- 헤더 (PC 반응형 너비 확장) -->
+  <header class="sticky top-0 z-40 bg-[#FBFAC6]/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#A4CEE4]/40 dark:border-slate-800 px-4 sm:px-8 py-3">
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="text-xl">✨</span>
-        <h1 class="text-lg font-extrabold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+        <h1 class="text-lg font-extrabold tracking-tight text-slate-800 dark:text-white">
           레퍼런스 창고
         </h1>
       </div>
       <div class="flex gap-2 items-center">
-        <!-- 💡 과거 태그 일괄 정리 임시 버튼 -->
-        <button onclick="runTagMigration()" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-full text-xs font-bold transition shadow-sm">
+        <!-- 과거 태그 일괄 정리 임시 버튼 -->
+        <button onclick="runTagMigration()" class="px-3 py-1.5 bg-[#A4CEE4] hover:bg-brandSkyDark active:scale-95 text-slate-900 rounded-full text-xs font-bold transition shadow-sm border border-slate-700/10">
           🧹 태그 일괄 정리
         </button>
 
-        <button id="selectModeBtn" onclick="toggleSelectMode()" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-xs font-semibold transition">
+        <button id="selectModeBtn" onclick="toggleSelectMode()" class="px-3 py-1.5 bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-xs font-semibold transition border border-[#A4CEE4]/40 dark:border-slate-700">
           선택 삭제
         </button>
-        <button onclick="openModal()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-full text-xs font-semibold shadow-md shadow-indigo-500/25 transition-all duration-200">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+        <button onclick="openModal()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#A4CEE4] hover:bg-brandSkyDark active:scale-95 text-slate-900 rounded-full text-xs font-bold shadow-md shadow-[#A4CEE4]/40 transition-all duration-200 border border-slate-700/10">
+          <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
           추가
         </button>
-        <button id="themeToggle" onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+        <button id="themeToggle" onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-full bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors border border-[#A4CEE4]/40 dark:border-slate-700">
           🌙
         </button>
       </div>
@@ -51,9 +68,9 @@
     
     <!-- 카테고리 필터 버튼 영역 -->
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 flex items-center justify-between gap-2">
-      <button onclick="toggleFilterDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition">
+      <button onclick="toggleFilterDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition border border-[#A4CEE4]/50 shadow-sm">
         <span>🏷️ 카테고리 선택</span>
-        <span id="filterBadge" class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">전체</span>
+        <span id="filterBadge" class="bg-[#A4CEE4] text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-extrabold">전체</span>
         <svg id="arrowIcon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
       </button>
 
@@ -61,10 +78,10 @@
     </div>
 
     <!-- 접이식 카테고리 태그 선택창 -->
-    <div id="filterDrawer" class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 hidden bg-slate-100/90 dark:bg-slate-800/90 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 backdrop-blur">
-      <div class="text-[11px] font-bold text-slate-400 mb-2 flex justify-between items-center">
+    <div id="filterDrawer" class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 hidden bg-white/95 dark:bg-slate-800/95 p-3 rounded-2xl border border-[#A4CEE4]/50 dark:border-slate-700 shadow-md backdrop-blur">
+      <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 flex justify-between items-center">
         <span>한 눈에 보는 카테고리 (복수 선택 가능)</span>
-        <button onclick="resetTags()" class="text-indigo-500 hover:underline">초기화</button>
+        <button onclick="resetTags()" class="text-brandSkyDark hover:underline font-bold">초기화</button>
       </div>
       <div id="tagFiltersGrid" class="flex flex-wrap gap-1.5"></div>
     </div>
@@ -85,7 +102,7 @@
 
   <!-- 등록 및 수정 모달 팝업 -->
   <div id="addModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300">
-    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-800">
+    <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl border border-[#A4CEE4]/40 dark:border-slate-800">
       <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
         <h2 id="modalTitle" class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <span>🖼️</span> 레퍼런스 등록
@@ -96,18 +113,18 @@
       <div class="space-y-3 text-xs">
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">제목 / 계정명</label>
-          <input type="text" id="inputTitle" placeholder="예: 추구미 계정, 릴스 구성 참고" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
+          <input type="text" id="inputTitle" placeholder="예: 추구미 계정, 릴스 구성 참고" class="w-full px-3.5 py-2.5 bg-[#FDFEEB]/80 dark:bg-slate-800/60 border border-[#A4CEE4]/50 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brandSkyDark/50 transition">
         </div>
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">인스타 / 유튜브 / 웹 링크</label>
-          <input type="url" id="inputLink" placeholder="https://instagram.com/..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition">
+          <input type="url" id="inputLink" placeholder="https://instagram.com/..." class="w-full px-3.5 py-2.5 bg-[#FDFEEB]/80 dark:bg-slate-800/60 border border-[#A4CEE4]/50 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brandSkyDark/50 transition">
         </div>
         
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">📸 이미지 여러 장 첨부 (PC Ctrl+V 가능)</label>
-          <div id="pasteDropArea" class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 transition">
-            <input type="file" id="inputFile" accept="image/*" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 dark:file:bg-indigo-950 dark:file:text-indigo-400" onchange="handleFileSelect(event)">
-            <p class="text-[11px] text-indigo-500 font-medium mt-1">💡 여러 장을 동시에 고르거나 붙여넣을 수 있습니다!</p>
+          <div id="pasteDropArea" class="border-2 border-dashed border-[#A4CEE4] dark:border-slate-700 rounded-xl p-3 text-center bg-[#FDFEEB]/80 dark:bg-slate-800/40 hover:bg-[#FBFAC6]/40 transition">
+            <input type="file" id="inputFile" accept="image/*" multiple class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#A4CEE4]/40 file:text-slate-800 dark:file:bg-slate-700 dark:file:text-brandSky" onchange="handleFileSelect(event)">
+            <p class="text-[11px] text-brandSkyDark font-semibold mt-1">💡 여러 장을 동시에 고르거나 붙여넣을 수 있습니다!</p>
             
             <div id="imageManageArea" class="mt-3 flex gap-2 overflow-x-auto pb-2 no-scrollbar"></div>
           </div>
@@ -119,11 +136,11 @@
         </div>
         <div>
           <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">메모 / 참고할 특징</label>
-          <textarea id="inputMemo" rows="2" placeholder="어떤 부분이 참고가 되었나요?" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition resize-none"></textarea>
+          <textarea id="inputMemo" rows="2" placeholder="어떤 부분이 참고가 되었나요?" class="w-full px-3.5 py-2.5 bg-[#FDFEEB]/80 dark:bg-slate-800/60 border border-[#A4CEE4]/50 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brandSkyDark/50 transition resize-none"></textarea>
         </div>
       </div>
 
-      <button onclick="saveReference()" id="saveBtn" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/25 active:scale-[0.98] transition-all text-xs">
+      <button onclick="saveReference()" id="saveBtn" class="w-full py-3 bg-[#A4CEE4] hover:bg-brandSkyDark text-slate-900 font-bold rounded-2xl shadow-lg shadow-[#A4CEE4]/40 active:scale-[0.98] transition-all text-xs border border-slate-700/10">
         저장하기
       </button>
     </div>
@@ -147,7 +164,7 @@
     let selectedIds = new Set();
     let cardSlideIndexes = {};
 
-    // 💡 과거 태그 일괄 변환 함수 (버튼 클릭 시 작동)
+    // 과거 태그 일괄 변환 함수 (버튼 클릭 시 작동)
     async function runTagMigration() {
       const mapping = {
         '맛집_레퍼런스': '맛집·여행', '맛집추천': '맛집·여행', '여행_레퍼런스': '맛집·여행', '여행추천': '맛집·여행',
@@ -202,9 +219,9 @@
       currentImageUrls.forEach((url, index) => {
         const isMain = index === 0;
         html += `
-          <div class="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border ${isMain ? 'ring-2 ring-indigo-600 border-indigo-600' : 'border-slate-200'}">
+          <div class="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border ${isMain ? 'ring-2 ring-brandSkyDark border-brandSkyDark' : 'border-slate-200'}">
             <img src="${url}" class="w-full h-full object-cover">
-            ${isMain ? `<span class="absolute top-1 left-1 bg-indigo-600 text-white text-[9px] px-1 py-0.5 rounded font-bold">대표</span>` : `<button onclick="setMainExisting(${index})" class="absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1 py-0.5 rounded">대표설정</button>`}
+            ${isMain ? `<span class="absolute top-1 left-1 bg-[#A4CEE4] text-slate-900 text-[9px] px-1 py-0.5 rounded font-bold shadow-sm">대표</span>` : `<button onclick="setMainExisting(${index})" class="absolute top-1 left-1 bg-black/60 text-white text-[9px] px-1 py-0.5 rounded">대표설정</button>`}
             <button onclick="removeExistingImg(${index})" class="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">&times;</button>
           </div>
         `;
@@ -214,9 +231,9 @@
         const tempUrl = URL.createObjectURL(file);
         const isMain = currentImageUrls.length === 0 && index === 0;
         html += `
-          <div class="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border ${isMain ? 'ring-2 ring-indigo-600 border-indigo-600' : 'border-slate-200'}">
+          <div class="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border ${isMain ? 'ring-2 ring-brandSkyDark border-brandSkyDark' : 'border-slate-200'}">
             <img src="${tempUrl}" class="w-full h-full object-cover">
-            <span class="absolute bottom-1 right-1 bg-green-600 text-white text-[8px] px-1 rounded font-bold">NEW</span>
+            <span class="absolute bottom-1 right-1 bg-[#A4CEE4] text-slate-900 text-[8px] px-1 rounded font-extrabold border border-slate-700/10">NEW</span>
             <button onclick="removeNewFile(${index})" class="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center font-bold">&times;</button>
           </div>
         `;
@@ -254,7 +271,7 @@
         updateSelectedCount();
       } else {
         btn.innerText = '선택 삭제';
-        btn.className = 'px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-xs font-semibold transition';
+        btn.className = 'px-3 py-1.5 bg-white/80 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-xs font-semibold transition border border-[#A4CEE4]/40 dark:border-slate-700';
         deleteBar.classList.add('hidden');
       }
       renderCards();
@@ -295,13 +312,13 @@
       badge.innerText = selectedTags.has('전체') ? '전체' : `${selectedTags.size}개`;
 
       container.innerHTML = TAGS.map(tag => `
-        <button onclick="toggleTag('${tag}')" class="px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 ${selectedTags.has(tag) ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}">
+        <button onclick="toggleTag('${tag}')" class="px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-150 ${selectedTags.has(tag) ? 'bg-[#A4CEE4] text-slate-900 font-bold shadow-sm border border-slate-700/10' : 'bg-[#FDFEEB] dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-[#FBFAC6] border border-[#A4CEE4]/30'}">
           ${tag}
         </button>
       `).join('');
 
       chips.innerHTML = Array.from(selectedTags).map(t => `
-        <span class="bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-lg whitespace-nowrap font-medium">#${t}</span>
+        <span class="bg-[#A4CEE4]/50 dark:bg-slate-800 text-slate-800 dark:text-brandSky px-2 py-0.5 rounded-lg whitespace-nowrap font-bold text-[10px] border border-[#A4CEE4]/60">#${t}</span>
       `).join('');
     }
 
@@ -374,7 +391,7 @@
     function renderModalTags() {
       const container = document.getElementById('modalTags');
       container.innerHTML = ALL_TAGS.map(tag => `
-        <button onclick="toggleModalTag('${tag}')" type="button" class="px-2.5 py-1 rounded-lg text-xs transition-all ${modalSelectedTags.has(tag) ? 'bg-indigo-600 text-white font-medium shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'}">
+        <button onclick="toggleModalTag('${tag}')" type="button" class="px-2.5 py-1 rounded-lg text-xs transition-all ${modalSelectedTags.has(tag) ? 'bg-[#A4CEE4] text-slate-900 font-bold shadow-sm border border-slate-700/10' : 'bg-[#FDFEEB] dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-[#FBFAC6] border border-[#A4CEE4]/30'}">
           #${tag}
         </button>
       `).join('');
@@ -480,7 +497,7 @@
       if (filteredData.length === 0) {
         grid.innerHTML = `
           <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
-            <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-2xl mb-3">🎨</div>
+            <div class="w-16 h-16 bg-[#FBFAC6] dark:bg-slate-800 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner">🎨</div>
             <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">저장된 레퍼런스가 없습니다</p>
             <p class="text-xs text-slate-400">우측 상단 '+ 추가' 버튼을 눌러 첫 레퍼런스를 적어보세요.</p>
           </div>
@@ -495,7 +512,7 @@
         const isSelected = selectedIds.has(item.id);
 
         return `
-          <div class="masonry-item bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-md border transition-all duration-200 relative group ${isSelected ? 'ring-2 ring-rose-500 border-rose-500 bg-rose-50/20' : 'border-slate-200/60 dark:border-slate-800'}" onclick="${isSelectMode ? `toggleSelectItem('${item.id}')` : ''}">
+          <div class="masonry-item bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-md border transition-all duration-200 relative group ${isSelected ? 'ring-2 ring-rose-500 border-rose-500 bg-rose-50/20' : 'border-[#A4CEE4]/40 dark:border-slate-800'}" onclick="${isSelectMode ? `toggleSelectItem('${item.id}')` : ''}">
             
             ${isSelectMode ? `
               <div class="absolute top-2.5 left-2.5 z-20">
@@ -513,7 +530,7 @@
             `}
             
             ${displayImg ? `
-              <div class="relative overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[120px] flex items-center justify-center cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">
+              <div class="relative overflow-hidden bg-[#FBFAC6]/30 dark:bg-slate-800 min-h-[120px] flex items-center justify-center cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">
                 <img src="${displayImg}" class="w-full object-cover group-hover:scale-105 transition duration-300" loading="lazy"/>
                 
                 ${imgList.length > 1 ? `
@@ -528,16 +545,16 @@
             
             <div class="p-3.5">
               ${item.title ? `<h3 class="font-bold text-sm text-slate-900 dark:text-white leading-snug mb-1.5 cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">${item.title}</h3>` : ''}
-              ${item.memo ? `<p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-2.5 whitespace-pre-line cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">${item.memo}</p>` : ''}
+              ${item.memo ? `<p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2.5 whitespace-pre-line cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">${item.memo}</p>` : ''}
               
               ${item.tags && item.tags.length > 0 ? `
                 <div class="flex flex-wrap gap-1 mb-3">
-                  ${item.tags.map(t => `<span class="text-[10px] font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-md">#${t}</span>`).join('')}
+                  ${item.tags.map(t => `<span class="text-[10px] font-bold bg-[#FBFAC6] dark:bg-slate-800 text-slate-800 dark:text-brandSky px-2 py-0.5 rounded-md border border-[#A4CEE4]/40">#${t}</span>`).join('')}
                 </div>
               ` : ''}
 
               ${item.link_url ? `
-                <a href="${item.link_url}" target="_blank" onclick="event.stopPropagation()" class="flex items-center justify-center gap-1 w-full text-center text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 py-2 rounded-xl font-semibold transition">
+                <a href="${item.link_url}" target="_blank" onclick="event.stopPropagation()" class="flex items-center justify-center gap-1 w-full text-center text-xs bg-[#A4CEE4]/30 hover:bg-[#A4CEE4]/60 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 py-2 rounded-xl font-bold transition border border-[#A4CEE4]/50">
                   <span>링크 바로가기</span>
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                 </a>
