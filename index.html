@@ -28,7 +28,6 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
-    /* PC 대응 레이아웃 열 수 확장 */
     .masonry-grid { column-count: 2; column-gap: 14px; }
     @media (min-width: 640px) { .masonry-grid { column-count: 3; column-gap: 18px; } }
     @media (min-width: 1024px) { .masonry-grid { column-count: 4; column-gap: 20px; } }
@@ -38,7 +37,7 @@
 </head>
 <body class="bg-[#FDFDE8]/60 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen pb-28 transition-colors duration-300">
 
-  <!-- 헤더 (PC 반응형 너비 확장) -->
+  <!-- 헤더 -->
   <header class="sticky top-0 z-40 bg-[#FBFAC6]/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-[#A4CEE4]/40 dark:border-slate-800 px-4 sm:px-8 py-3">
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2">
@@ -66,13 +65,21 @@
       </div>
     </div>
     
-    <!-- 카테고리 필터 버튼 영역 -->
+    <!-- 카테고리 필터 버튼 및 촬영예정 전용 필터 영역 -->
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 flex items-center justify-between gap-2">
-      <button onclick="toggleFilterDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition border border-[#A4CEE4]/50 shadow-sm">
-        <span>🏷️ 카테고리 선택</span>
-        <span id="filterBadge" class="bg-[#A4CEE4] text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-extrabold">전체</span>
-        <svg id="arrowIcon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-      </button>
+      <div class="flex items-center gap-2">
+        <button onclick="toggleFilterDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition border border-[#A4CEE4]/50 shadow-sm">
+          <span>🏷️ 카테고리 선택</span>
+          <span id="filterBadge" class="bg-[#A4CEE4] text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-extrabold">전체</span>
+          <svg id="arrowIcon" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+
+        <!-- 💡 곧 찍을 영상(고정)만 보기 필터 버튼 -->
+        <button id="pinnedFilterBtn" onclick="togglePinnedFilter()" class="flex items-center gap-1 px-3 py-1.5 bg-white/90 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition border border-[#A4CEE4]/50 shadow-sm hover:bg-[#FBFAC6]">
+          <span>📌 곧 찍을 영상</span>
+          <span id="pinnedCountBadge" class="bg-amber-400 text-slate-900 text-[10px] px-1.5 py-0.2 rounded-full font-extrabold">0</span>
+        </button>
+      </div>
 
       <div id="selectedChips" class="flex gap-1 overflow-x-auto no-scrollbar text-[11px]"></div>
     </div>
@@ -151,7 +158,6 @@
     const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb"; 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 해결책 2번이 반영된 8개 카테고리 구성
     const TAGS = ['전체', '맛집·카페', '여행·명소', '데이트·코스', '텍스트·영감', '촬영·편집·디자인·방법', '계정', '마케팅', '기타'];
     const ALL_TAGS = TAGS.filter(t => t !== '전체');
     let selectedTags = new Set(['전체']);
@@ -164,28 +170,53 @@
     let isSelectMode = false;
     let selectedIds = new Set();
     let cardSlideIndexes = {};
+    
+    // 💡 고정(Pin) 필터 상태
+    let showOnlyPinned = false;
 
-    // 과거 태그 일괄 변환 규칙
+    // 로컬 스토리지에 고정된 ID 저장/관리
+    function getPinnedIds() {
+      try {
+        return new Set(JSON.parse(localStorage.getItem('pinned_reference_ids') || '[]'));
+      } catch (e) {
+        return new Set();
+      }
+    }
+
+    function togglePin(id) {
+      const pins = getPinnedIds();
+      if (pins.has(id)) {
+        pins.delete(id);
+      } else {
+        pins.add(id);
+      }
+      localStorage.setItem('pinned_reference_ids', JSON.stringify(Array.from(pins)));
+      renderTagFilters();
+      renderCards();
+    }
+
+    function togglePinnedFilter() {
+      showOnlyPinned = !showOnlyPinned;
+      const btn = document.getElementById('pinnedFilterBtn');
+      if (showOnlyPinned) {
+        btn.classList.add('bg-amber-300', 'border-amber-500', 'font-extrabold');
+        btn.classList.remove('bg-white/90');
+      } else {
+        btn.classList.remove('bg-amber-300', 'border-amber-500', 'font-extrabold');
+        btn.classList.add('bg-white/90');
+      }
+      renderCards();
+    }
+
     async function runTagMigration() {
       const mapping = {
-        '맛집': '맛집·카페',
-        '맛집_레퍼런스': '맛집·카페',
-        '맛집추천': '맛집·카페',
-        '여행': '여행·명소',
-        '여행_레퍼런스': '여행·명소',
-        '여행추천': '여행·명소',
-        '맛집·여행': '데이트·코스', // 묶여있던 기존 태그는 데이트·코스로 전환
-        '책추천': '텍스트·영감',
-        '영상글귀추천': '텍스트·영감',
-        '촬영_노하우': '촬영·편집·디자인·방법',
-        '촬영_영상구성레퍼런스': '촬영·편집·디자인·방법',
-        '촬영': '촬영·편집·디자인·방법',
-        '편집_영상레퍼런스': '촬영·편집·디자인·방법',
-        '편집_썸네일레퍼런스': '촬영·편집·디자인·방법',
-        '편집_꿀팁': '촬영·편집·디자인·방법',
-        '편집·디자인': '촬영·편집·디자인·방법',
-        '계정_레퍼런스': '계정',
-        '계정_마케팅운영팁': '마케팅'
+        '맛집': '맛집·카페', '맛집_레퍼런스': '맛집·카페', '맛집추천': '맛집·카페',
+        '여행': '여행·명소', '여행_레퍼런스': '여행·명소', '여행추천': '여행·명소',
+        '맛집·여행': '데이트·코스',
+        '책추천': '텍스트·영감', '영상글귀추천': '텍스트·영감',
+        '촬영_노하우': '촬영·편집·디자인·방법', '촬영_영상구성레퍼런스': '촬영·편집·디자인·방법', '촬영': '촬영·편집·디자인·방법',
+        '편집_영상레퍼런스': '촬영·편집·디자인·방법', '편집_썸네일레퍼런스': '촬영·편집·디자인·방법', '편집_꿀팁': '촬영·편집·디자인·방법', '편집·디자인': '촬영·편집·디자인·방법',
+        '계정_레퍼런스': '계정', '계정_마케팅운영팁': '마케팅'
       };
 
       if (!confirm('기존 저장된 레퍼런스들의 태그를 새 카테고리(맛집·카페, 여행·명소, 데이트·코스 등)로 일괄 정리할까요?')) return;
@@ -318,11 +349,14 @@
       arrow.classList.toggle('rotate-180');
     }
 
-    // 카테고리별 개수 카운팅 및 렌더링
     function renderTagFilters() {
       const container = document.getElementById('tagFiltersGrid');
       const badge = document.getElementById('filterBadge');
       const chips = document.getElementById('selectedChips');
+      const pinnedBadge = document.getElementById('pinnedCountBadge');
+
+      const pins = getPinnedIds();
+      pinnedBadge.innerText = pins.size;
 
       const tagCounts = {};
       tagCounts['전체'] = cachedData.length;
@@ -358,7 +392,7 @@
       selectedTags.clear();
       selectedTags.add('전체');
       renderTagFilters();
-      loadData();
+      renderCards();
     }
 
     function toggleTag(tag) {
@@ -372,7 +406,7 @@
         if (selectedTags.size === 0) selectedTags.add('전체');
       }
       renderTagFilters();
-      loadData();
+      renderCards();
     }
 
     function openModal() {
@@ -518,21 +552,37 @@
     }
 
     function renderCards() {
-      let filteredData = cachedData;
+      const pins = getPinnedIds();
+      let filteredData = [...cachedData];
 
+      // 1. 촬영예정(고정) 단독 필터 활성화 시
+      if (showOnlyPinned) {
+        filteredData = filteredData.filter(item => pins.has(item.id));
+      }
+
+      // 2. 카테고리 태그 필터링
       if (!selectedTags.has('전체')) {
         filteredData = filteredData.filter(item => {
           return Array.from(selectedTags).some(t => item.tags && item.tags.includes(t));
         });
       }
 
+      // 3. 💡 고정(Pin)된 아이템을 최상단으로 자동 정렬
+      filteredData.sort((a, b) => {
+        const aPinned = pins.has(a.id);
+        const bPinned = pins.has(b.id);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+        return new Date(b.created_at) - new Date(a.created_at);
+      });
+
       const grid = document.getElementById('cardGrid');
       if (filteredData.length === 0) {
         grid.innerHTML = `
           <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
-            <div class="w-16 h-16 bg-[#FBFAC6] dark:bg-slate-800 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner">🎨</div>
-            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">저장된 레퍼런스가 없습니다</p>
-            <p class="text-xs text-slate-400">우측 상단 '+ 추가' 버튼을 눌러 첫 레퍼런스를 적어보세요.</p>
+            <div class="w-16 h-16 bg-[#FBFAC6] dark:bg-slate-800 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner">📌</div>
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">표시할 레퍼런스가 없습니다</p>
+            <p class="text-xs text-slate-400">${showOnlyPinned ? '우측 상단 📌 버튼을 눌러 촬영할 레퍼런스를 고정해보세요.' : '우측 상단 + 추가 버튼으로 새 레퍼런스를 등록해보세요.'}</p>
           </div>
         `;
         return;
@@ -543,16 +593,21 @@
         const curIdx = cardSlideIndexes[item.id] || 0;
         const displayImg = imgList[curIdx] || null;
         const isSelected = selectedIds.has(item.id);
+        const isPinned = pins.has(item.id);
 
         return `
-          <div class="masonry-item bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-md border transition-all duration-200 relative group ${isSelected ? 'ring-2 ring-rose-500 border-rose-500 bg-rose-50/20' : 'border-[#A4CEE4]/40 dark:border-slate-800'}" onclick="${isSelectMode ? `toggleSelectItem('${item.id}')` : ''}">
+          <div class="masonry-item bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-md border transition-all duration-200 relative group ${isPinned ? 'ring-2 ring-amber-400 border-amber-400 bg-amber-50/20' : isSelected ? 'ring-2 ring-rose-500 border-rose-500 bg-rose-50/20' : 'border-[#A4CEE4]/40 dark:border-slate-800'}" onclick="${isSelectMode ? `toggleSelectItem('${item.id}')` : ''}">
             
             ${isSelectMode ? `
               <div class="absolute top-2.5 left-2.5 z-20">
                 <input type="checkbox" ${isSelected ? 'checked' : ''} class="w-5 h-5 accent-rose-600 rounded">
               </div>
             ` : `
-              <div class="absolute top-2.5 right-2.5 z-10 flex gap-1">
+              <div class="absolute top-2.5 right-2.5 z-10 flex gap-1 items-center">
+                <!-- 💡 핀 고정 버튼 -->
+                <button onclick="event.stopPropagation(); togglePin('${item.id}')" class="${isPinned ? 'bg-amber-400 text-slate-900 shadow-md scale-105' : 'bg-black/40 hover:bg-black/60 text-white'} rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="${isPinned ? '촬영예정 고정 해제' : '곧 찍을 영상으로 핀 고정'}">
+                  📌
+                </button>
                 <button onclick="event.stopPropagation(); editReference('${item.id}')" class="bg-black/40 hover:bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 text-xs" title="수정/사진추가">
                   ✏️
                 </button>
@@ -566,6 +621,12 @@
               <div class="relative overflow-hidden bg-[#FBFAC6]/30 dark:bg-slate-800 min-h-[120px] flex items-center justify-center cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">
                 <img src="${displayImg}" class="w-full object-cover group-hover:scale-105 transition duration-300" loading="lazy"/>
                 
+                ${isPinned ? `
+                  <span class="absolute bottom-2.5 left-2.5 bg-amber-400 text-slate-900 text-[10px] px-2 py-0.5 rounded-full font-extrabold shadow-sm backdrop-blur-sm">
+                    🔥 촬영예정
+                  </span>
+                ` : ''}
+
                 ${imgList.length > 1 ? `
                   <span class="absolute top-2.5 left-2.5 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm">
                     ${curIdx + 1} / ${imgList.length}
@@ -577,7 +638,7 @@
             ` : ''}
             
             <div class="p-3.5">
-              ${item.title ? `<h3 class="font-bold text-sm text-slate-900 dark:text-white leading-snug mb-1.5 cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">${item.title}</h3>` : ''}
+              ${item.title ? `<h3 class="font-bold text-sm text-slate-900 dark:text-white leading-snug mb-1.5 cursor-pointer flex items-center gap-1" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">${isPinned ? '<span class="text-amber-500 font-extrabold">📌</span>' : ''}${item.title}</h3>` : ''}
               ${item.memo ? `<p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2.5 whitespace-pre-line cursor-pointer" onclick="${!isSelectMode ? `editReference('${item.id}')` : ''}">${item.memo}</p>` : ''}
               
               ${item.tags && item.tags.length > 0 ? `
