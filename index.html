@@ -151,8 +151,8 @@
     const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb"; 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 요청하신 카테고리 구성
-    const TAGS = ['전체', '맛집', '여행', '텍스트·영감', '촬영·편집·디자인·방법', '계정', '마케팅', '기타'];
+    // 해결책 2번이 반영된 8개 카테고리 구성
+    const TAGS = ['전체', '맛집·카페', '여행·명소', '데이트·코스', '텍스트·영감', '촬영·편집·디자인·방법', '계정', '마케팅', '기타'];
     const ALL_TAGS = TAGS.filter(t => t !== '전체');
     let selectedTags = new Set(['전체']);
     let modalSelectedTags = new Set();
@@ -168,17 +168,27 @@
     // 과거 태그 일괄 변환 규칙
     async function runTagMigration() {
       const mapping = {
-        '맛집_레퍼런스': '맛집', '맛집추천': '맛집',
-        '여행_레퍼런스': '여행', '여행추천': '여행',
-        '맛집·여행': '맛집',
-        '책추천': '텍스트·영감', '영상글귀추천': '텍스트·영감',
-        '촬영_노하우': '촬영·편집·디자인·방법', '촬영_영상구성레퍼런스': '촬영·편집·디자인·방법', '촬영': '촬영·편집·디자인·방법',
-        '편집_영상레퍼런스': '촬영·편집·디자인·방법', '편집_썸네일레퍼런스': '촬영·편집·디자인·방법', '편집_꿀팁': '촬영·편집·디자인·방법', '편집·디자인': '촬영·편집·디자인·방법',
+        '맛집': '맛집·카페',
+        '맛집_레퍼런스': '맛집·카페',
+        '맛집추천': '맛집·카페',
+        '여행': '여행·명소',
+        '여행_레퍼런스': '여행·명소',
+        '여행추천': '여행·명소',
+        '맛집·여행': '데이트·코스', // 묶여있던 기존 태그는 데이트·코스로 전환
+        '책추천': '텍스트·영감',
+        '영상글귀추천': '텍스트·영감',
+        '촬영_노하우': '촬영·편집·디자인·방법',
+        '촬영_영상구성레퍼런스': '촬영·편집·디자인·방법',
+        '촬영': '촬영·편집·디자인·방법',
+        '편집_영상레퍼런스': '촬영·편집·디자인·방법',
+        '편집_썸네일레퍼런스': '촬영·편집·디자인·방법',
+        '편집_꿀팁': '촬영·편집·디자인·방법',
+        '편집·디자인': '촬영·편집·디자인·방법',
         '계정_레퍼런스': '계정',
         '계정_마케팅운영팁': '마케팅'
       };
 
-      if (!confirm('기존 저장된 레퍼런스들의 태그를 새 카테고리(맛집, 여행, 촬영·편집·디자인·방법 등)로 일괄 정리할까요?')) return;
+      if (!confirm('기존 저장된 레퍼런스들의 태그를 새 카테고리(맛집·카페, 여행·명소, 데이트·코스 등)로 일괄 정리할까요?')) return;
 
       const { data, error } = await supabaseClient.from('references').select('id, tags');
       if (error) return alert('오류: ' + error.message);
@@ -314,7 +324,6 @@
       const badge = document.getElementById('filterBadge');
       const chips = document.getElementById('selectedChips');
 
-      // 카테고리별 개수 계산
       const tagCounts = {};
       tagCounts['전체'] = cachedData.length;
       ALL_TAGS.forEach(t => tagCounts[t] = 0);
