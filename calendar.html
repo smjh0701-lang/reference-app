@@ -249,6 +249,21 @@
     let editingId = null;
     let selectedDateStr = null;
 
+    // 메모에서 협찬금액 파싱 헬퍼 함수
+    function parseItemData(item) {
+      let product_amount = Number(item.product_amount) || 0;
+      let cleanMemo = item.memo || '';
+
+      if (!product_amount && cleanMemo.includes('[PROD_VAL:')) {
+        const match = cleanMemo.match(/\[PROD_VAL:(\d+)\]/);
+        if (match) {
+          product_amount = Number(match[1]) || 0;
+          cleanMemo = cleanMemo.replace(/\[PROD_VAL:\d+\]\n?/, '');
+        }
+      }
+      return { ...item, parsed_product_amount: product_amount, display_memo: cleanMemo };
+    }
+
     function setPlatform(name) {
       document.getElementById('inputPlatform').value = name;
     }
@@ -270,11 +285,16 @@
     }
 
     async function loadData() {
-      const { data } = await supabaseClient.from('schedules').select('*');
-      scheduleList = data || [];
-      renderCalendar();
-      updateSummary();
-      renderDetailList();
+      try {
+        const { data, error } = await supabaseClient.from('schedules').select('*');
+        if (error) throw error;
+        scheduleList = (data || []).map(parseItemData);
+        renderCalendar();
+        updateSummary();
+        renderDetailList();
+      } catch (err) {
+        console.error("데이터 로드 실패:", err);
+      }
     }
 
     function selectDate(dateStr) {
@@ -294,10 +314,10 @@
         document.getElementById('inputCategory').value = item.category || '방문일';
         document.getElementById('inputDate').value = item.event_date || '';
         document.getElementById('inputTime').value = item.event_time || '';
-        document.getElementById('inputProductAmount').value = item.product_amount || '';
+        document.getElementById('inputProductAmount').value = item.parsed_product_amount || '';
         document.getElementById('inputAmount').value = item.amount || '';
         document.getElementById('inputIsPaid').checked = !!item.is_paid;
-        document.getElementById('inputMemo').value = item.memo || '';
+        document.getElementById('inputMemo').value = item.display_memo || '';
         document.getElementById('deleteBtn').classList.remove('hidden');
       } else {
         editingId = null;
@@ -334,9 +354,14 @@
       const product_amount = Number(document.getElementById('inputProductAmount').value) || 0;
       const amount = Number(document.getElementById('inputAmount').value) || 0;
       const is_paid = document.getElementById('inputIsPaid').checked;
-      const memo = document.getElementById('inputMemo').value;
+      const rawMemo = document.getElementById('inputMemo').value;
 
       if (!title || !event_date) return alert('제목과 날짜는 필수입니다.');
+
+      // DB 컬럼이 없어도 에러가 안 나도록 memo 안에 협찬금액 태그를 자동 포함
+      const finalMemo = product_amount > 0 
+        ? `[PROD_VAL:${product_amount}]${rawMemo ? '\n' + rawMemo : ''}` 
+        : rawMemo;
 
       const payload = { 
         title, 
@@ -346,34 +371,48 @@
         category, 
         event_date, 
         event_time, 
-        product_amount,
         amount, 
         is_paid, 
-        memo 
+        memo: finalMemo 
       };
 
-      if (editingId) {
-        await supabaseClient.from('schedules').update(payload).eq('id', editingId);
-      } else {
-        await supabaseClient.from('schedules').insert([payload]);
+      try {
+        if (editingId) {
+          const { error } = await supabaseClient.from('schedules').update(payload).eq('id', editingId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabaseClient.from('schedules').insert([payload]);
+          if (error) throw error;
+        }
+        closeModal();
+        loadData();
+      } catch (err) {
+        alert('저장 중 오류가 발생했습니다: ' + (err.message || JSON.stringify(err)));
       }
-
-      closeModal();
-      loadData();
     }
 
     async function togglePaidStatus(id, currentStatus, event) {
       if (event) event.stopPropagation();
-      await supabaseClient.from('schedules').update({ is_paid: !currentStatus }).eq('id', id);
-      loadData();
+      try {
+        const { error } = await supabaseClient.from('schedules').update({ is_paid: !currentStatus }).eq('id', id);
+        if (error) throw error;
+        loadData();
+      } catch (err) {
+        alert('상태 변경 실패: ' + err.message);
+      }
     }
 
     async function deleteSchedule() {
       if (!editingId) return;
       if (!confirm('이 일정을 삭제할까요?')) return;
-      await supabaseClient.from('schedules').delete().eq('id', editingId);
-      closeModal();
-      loadData();
+      try {
+        const { error } = await supabaseClient.from('schedules').delete().eq('id', editingId);
+        if (error) throw error;
+        closeModal();
+        loadData();
+      } catch (err) {
+        alert('삭제 실패: ' + err.message);
+      }
     }
 
     // 캘린더 바(Bar) 스타일 매핑
@@ -422,14 +461,12 @@
 
         html += `
           <div onclick="selectDate('${dateStr}')" class="p-0.5 sm:p-1.5 min-h-[75px] sm:min-h-[105px] bg-white transition-all cursor-pointer flex flex-col justify-start relative ${isSelected ? 'bg-palette-blush-soft ring-2 ring-palette-midnight ring-inset' : 'hover:bg-palette-cream-card'}">
-            <!-- 날짜 숫자 영역 -->
             <div class="flex items-center justify-between px-1">
               <span class="text-[10px] sm:text-xs font-black ${dateColor} ${isToday ? 'w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-palette-midnight text-white flex items-center justify-center text-[9px] sm:text-[11px]' : ''}">
                 ${date}
               </span>
             </div>
 
-            <!-- 캘린더 컬러 바 리스트 -->
             <div class="space-y-0.5 mt-1 overflow-hidden w-full">
               ${dayEvents.slice(0, 3).map(ev => `
                 <div onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" class="text-[8px] sm:text-[10px] px-1 py-0.5 rounded-[4px] truncate leading-tight ${getBarColor(ev)}">
@@ -456,7 +493,7 @@
       const paidCash = thisMonthEvents.filter(s => s.is_paid).reduce((sum, cur) => sum + (Number(cur.amount) || 0), 0);
       const unpaidCash = totalCash - paidCash;
       
-      const totalProduct = thisMonthEvents.reduce((sum, cur) => sum + (Number(cur.product_amount) || 0), 0);
+      const totalProduct = thisMonthEvents.reduce((sum, cur) => sum + (Number(cur.parsed_product_amount) || 0), 0);
       const grandTotal = totalCash + totalProduct;
 
       document.getElementById('grandTotal').innerText = `${grandTotal.toLocaleString()}원`;
@@ -497,7 +534,7 @@
       container.innerHTML = targetEvents.map(item => {
         const isPaid = !!item.is_paid;
         const cashAmt = Number(item.amount) || 0;
-        const prodAmt = Number(item.product_amount) || 0;
+        const prodAmt = Number(item.parsed_product_amount) || 0;
 
         return `
           <div onclick="openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-palette-cream-card p-3 rounded-xl border border-palette-border hover:border-palette-midnight/40 transition cursor-pointer flex items-center justify-between gap-2 shadow-sm">
@@ -509,7 +546,7 @@
                 <span class="text-[10px] font-bold text-palette-muted">${item.event_date} ${item.event_time || ''}</span>
               </div>
               <h4 class="font-black text-xs sm:text-sm text-palette-midnight truncate">${item.title}</h4>
-              ${item.memo ? `<p class="text-[10px] text-palette-muted truncate">${item.memo}</p>` : ''}
+              ${item.display_memo ? `<p class="text-[10px] text-palette-muted truncate">${item.display_memo}</p>` : ''}
             </div>
 
             <div class="flex flex-col items-end gap-1 shrink-0">
