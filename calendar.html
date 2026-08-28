@@ -46,7 +46,6 @@
   <!-- 상단 네비게이션 헤더 -->
   <header class="sticky top-0 z-40 bg-palette-cream/95 backdrop-blur-md border-b border-palette-border px-4 sm:px-8 py-3">
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
-      <!-- 월 이동 및 드롭 타이틀 -->
       <div class="flex items-center gap-2 sm:gap-3">
         <h1 id="currentMonthYear" class="text-lg sm:text-2xl font-black tracking-tight text-palette-midnight"></h1>
         <div class="flex items-center gap-1 bg-white/70 p-1 rounded-full border border-palette-border">
@@ -56,13 +55,12 @@
         </div>
       </div>
 
-      <!-- 새 일정 등록 버튼 -->
       <button onclick="openModal()" class="flex items-center gap-1 px-3.5 sm:px-4 py-1.5 sm:py-2 bg-palette-midnight hover:bg-black text-palette-cream rounded-full text-xs font-black transition shadow-sm active:scale-95">
         <span>+</span> 등록
       </button>
     </div>
 
-    <!-- 정산 요약 바 (개수 제외, 금액 중심) -->
+    <!-- 정산 요약 바 -->
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs pb-1">
       <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-palette-midnight/20 shrink-0 shadow-sm">
         <span class="text-[10px] font-black text-palette-midnight">✨ 총 혜택가치</span>
@@ -89,9 +87,7 @@
 
   <!-- 메인 캘린더 영역 -->
   <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto px-1 sm:px-6 pt-2 sm:pt-4 space-y-4">
-    
     <div class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden">
-      <!-- 요일 헤더 -->
       <div class="grid grid-cols-7 text-center py-2 border-b border-palette-border text-[11px] sm:text-xs font-black">
         <div class="text-palette-rosewood">일</div>
         <div class="text-palette-midnight">월</div>
@@ -101,12 +97,10 @@
         <div class="text-palette-midnight">금</div>
         <div class="text-palette-sky">토</div>
       </div>
-
-      <!-- 날짜 셀들 -->
       <div id="calendarGrid" class="grid grid-cols-7 border-collapse divide-x divide-y divide-palette-border/50"></div>
     </div>
 
-    <!-- 📋 선택된 날짜 or 이번 달 일정 목록 -->
+    <!-- 이번 달 / 선택된 날짜 일정 목록 -->
     <div class="bg-white border border-palette-border rounded-2xl sm:rounded-[28px] p-4 sm:p-6 shadow-sm space-y-3">
       <div class="flex items-center justify-between">
         <h3 id="detailListTitle" class="text-xs sm:text-sm font-black text-palette-midnight flex items-center gap-1.5">
@@ -116,7 +110,6 @@
       </div>
       <div id="scheduleTableList" class="space-y-2"></div>
     </div>
-
   </main>
 
   <!-- 일정 등록 및 수정 모달 -->
@@ -139,42 +132,42 @@
           <label class="block font-bold text-palette-midnight mb-1">체험단 사이트 / 플랫폼</label>
           <div class="flex flex-wrap gap-1 mb-1.5">
             <button type="button" onclick="setPlatform('레뷰')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white border border-palette-border hover:bg-palette-blush-soft text-palette-midnight">레뷰</button>
+            <button type="button" onclick="setPlatform('리뷰노트')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white border border-palette-border hover:bg-palette-blush-soft text-palette-midnight">리뷰노트</button>
             <button type="button" onclick="setPlatform('강남맛집')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white border border-palette-border hover:bg-palette-blush-soft text-palette-midnight">강남맛집</button>
             <button type="button" onclick="setPlatform('디너의여왕')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white border border-palette-border hover:bg-palette-blush-soft text-palette-midnight">디너의여왕</button>
-            <button type="button" onclick="setPlatform('미블')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white border border-palette-border hover:bg-palette-blush-soft text-palette-midnight">미블</button>
             <button type="button" onclick="setPlatform('인스타 DM')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white border border-palette-border hover:bg-palette-blush-soft text-palette-midnight">인스타 DM</button>
             <button type="button" onclick="setPlatform('개별협찬')" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white border border-palette-border hover:bg-palette-blush-soft text-palette-midnight">개별협찬</button>
           </div>
-          <input type="text" id="inputPlatform" placeholder="예: 레뷰, 강남맛집, 인스타 DM 등" class="w-full px-3.5 py-2 bg-white border border-palette-border rounded-xl focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-medium">
+          <input type="text" id="inputPlatform" placeholder="예: 레뷰, 리뷰노트, 인스타 DM 등" class="w-full px-3.5 py-2 bg-white border border-palette-border rounded-xl focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-medium">
         </div>
 
-        <!-- 콘텐츠 형태: 다중 선택 가능한 토글 버튼 -->
+        <!-- 콘텐츠 형태 태그 선택 -->
         <div>
           <label class="block font-bold text-palette-midnight mb-1">콘텐츠 형태 (중복 선택 가능)</label>
           <div class="grid grid-cols-2 gap-1.5" id="contentTypeContainer">
-            <button type="button" onclick="toggleContentType(this, '블로그 글')" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+            <button type="button" onclick="toggleContentType('블로그 글')" data-tag="블로그 글" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>✍️ 블로그 글</span>
-              <span class="check-icon text-[10px] text-palette-muted opacity-0">✓</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
             </button>
-            <button type="button" onclick="toggleContentType(this, '블로그 클립')" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+            <button type="button" onclick="toggleContentType('블로그 클립')" data-tag="블로그 클립" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>🎬 블로그 클립</span>
-              <span class="check-icon text-[10px] text-palette-muted opacity-0">✓</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
             </button>
-            <button type="button" onclick="toggleContentType(this, '인스타 피드')" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+            <button type="button" onclick="toggleContentType('인스타 피드')" data-tag="인스타 피드" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>📸 인스타 피드</span>
-              <span class="check-icon text-[10px] text-palette-muted opacity-0">✓</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
             </button>
-            <button type="button" onclick="toggleContentType(this, '인스타 릴스')" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+            <button type="button" onclick="toggleContentType('인스타 릴스')" data-tag="인스타 릴스" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>⚡ 인스타 릴스</span>
-              <span class="check-icon text-[10px] text-palette-muted opacity-0">✓</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
             </button>
-            <button type="button" onclick="toggleContentType(this, '유튜브/쇼츠')" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+            <button type="button" onclick="toggleContentType('유튜브/쇼츠')" data-tag="유튜브/쇼츠" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>▶️ 유튜브/쇼츠</span>
-              <span class="check-icon text-[10px] text-palette-muted opacity-0">✓</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
             </button>
-            <button type="button" onclick="toggleContentType(this, '내돈내산')" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+            <button type="button" onclick="toggleContentType('내돈내산')" data-tag="내돈내산" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>💸 내돈내산</span>
-              <span class="check-icon text-[10px] text-palette-muted opacity-0">✓</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
             </button>
           </div>
         </div>
@@ -213,7 +206,6 @@
           </div>
         </div>
 
-        <!-- 혜택 및 정산 금액 분리 영역 -->
         <div class="p-3 bg-white rounded-xl border border-palette-border space-y-2.5">
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -259,7 +251,33 @@
     let selectedDateStr = null;
     let selectedTypes = [];
 
-    // 메모에서 협찬금액 파싱 헬퍼 함수
+    // 💡 기존 구형 태그 및 중복 태그 정제 헬퍼 함수
+    function cleanContentTypes(rawTypeStr) {
+      if (!rawTypeStr) return [];
+      const parts = rawTypeStr.split(',').map(s => s.trim()).filter(Boolean);
+      const resultSet = new Set();
+
+      parts.forEach(p => {
+        if (p.includes('블로그') && (p.includes('게시글') || p.includes('글') || p === '블로그')) {
+          resultSet.add('블로그 글');
+        } else if (p.includes('블로그') && p.includes('클립')) {
+          resultSet.add('블로그 클립');
+        } else if (p.includes('인스타') && (p.includes('게시물') || p.includes('피드') || p === '인스타')) {
+          resultSet.add('인스타 피드');
+        } else if (p.includes('인스타') && p.includes('릴스')) {
+          resultSet.add('인스타 릴스');
+        } else if (p.includes('유튜브') || p.includes('쇼츠')) {
+          resultSet.add('유튜브/쇼츠');
+        } else if (p.includes('내돈내산')) {
+          resultSet.add('내돈내산');
+        } else if (p) {
+          resultSet.add(p);
+        }
+      });
+
+      return Array.from(resultSet);
+    }
+
     function parseItemData(item) {
       let product_amount = Number(item.product_amount) || 0;
       let cleanMemo = item.memo || '';
@@ -271,15 +289,23 @@
           cleanMemo = cleanMemo.replace(/\[PROD_VAL:\d+\]\n?/, '');
         }
       }
-      return { ...item, parsed_product_amount: product_amount, display_memo: cleanMemo };
+
+      // 태그 정제 적용
+      const cleanedTypes = cleanContentTypes(item.content_type);
+
+      return { 
+        ...item, 
+        parsed_product_amount: product_amount, 
+        display_memo: cleanMemo,
+        cleaned_types: cleanedTypes
+      };
     }
 
     function setPlatform(name) {
       document.getElementById('inputPlatform').value = name;
     }
 
-    // 콘텐츠 형태 다중 선택 토글
-    function toggleContentType(btn, typeName) {
+    function toggleContentType(typeName) {
       const idx = selectedTypes.indexOf(typeName);
       if (idx > -1) {
         selectedTypes.splice(idx, 1);
@@ -292,24 +318,16 @@
     function updateContentTypeUI() {
       const buttons = document.querySelectorAll('#contentTypeContainer .type-btn');
       buttons.forEach(btn => {
-        const spanText = btn.querySelector('span').innerText;
-        const matched = selectedTypes.some(t => spanText.includes(t));
+        const tag = btn.getAttribute('data-tag');
+        const isSelected = selectedTypes.includes(tag);
         const checkIcon = btn.querySelector('.check-icon');
 
-        if (matched) {
-          btn.classList.add('bg-palette-blush-soft', 'border-palette-midnight', 'font-black');
-          btn.classList.remove('bg-white', 'border-palette-border');
-          if (checkIcon) {
-            checkIcon.classList.remove('opacity-0');
-            checkIcon.classList.add('opacity-100', 'text-palette-midnight', 'font-black');
-          }
+        if (isSelected) {
+          btn.className = "type-btn px-2.5 py-2 rounded-xl text-[11px] bg-palette-blush-soft border border-palette-midnight font-black text-palette-midnight text-left flex items-center justify-between transition shadow-inner";
+          if (checkIcon) checkIcon.className = "check-icon text-[10px] opacity-100 text-palette-rosewood font-black";
         } else {
-          btn.classList.remove('bg-palette-blush-soft', 'border-palette-midnight', 'font-black');
-          btn.classList.add('bg-white', 'border-palette-border');
-          if (checkIcon) {
-            checkIcon.classList.add('opacity-0');
-            checkIcon.classList.remove('opacity-100', 'text-palette-midnight', 'font-black');
-          }
+          btn.className = "type-btn px-2.5 py-2 rounded-xl text-[11px] bg-white border border-palette-border font-bold text-palette-midnight text-left flex items-center justify-between transition hover:bg-palette-cream-card";
+          if (checkIcon) checkIcon.className = "check-icon text-[10px] opacity-0";
         }
       });
     }
@@ -356,8 +374,7 @@
         document.getElementById('inputTitle').value = item.title || '';
         document.getElementById('inputPlatform').value = item.platform || '';
         
-        // 다중 선택된 콘텐츠 형태 복원
-        selectedTypes = item.content_type ? item.content_type.split(', ') : [];
+        selectedTypes = item.cleaned_types || cleanContentTypes(item.content_type);
         updateContentTypeUI();
 
         document.getElementById('inputTopic').value = item.topic_category || '맛집';
@@ -467,7 +484,6 @@
       }
     }
 
-    // 캘린더 바(Bar) 스타일 매핑
     function getBarColor(item) {
       if (item.category === '원고마감') return 'bg-palette-blush text-palette-rosewood font-extrabold';
       if (item.category === '방문일') return 'bg-palette-sage-soft text-palette-midnight font-bold border border-palette-sage/40';
@@ -488,7 +504,6 @@
       const grid = document.getElementById('calendarGrid');
       let html = '';
 
-      // 이전 달 날짜 (회색 처리)
       for (let i = firstDayIndex; i > 0; i--) {
         const d = prevLastDate - i + 1;
         html += `<div class="p-1 min-h-[75px] sm:min-h-[105px] bg-[#FAF8F5]/50 text-palette-muted/30 text-[10px] sm:text-xs font-semibold select-none flex flex-col justify-start">${d}</div>`;
@@ -496,7 +511,6 @@
 
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // 이번 달 날짜들
       for (let date = 1; date <= lastDate; date++) {
         const monthPad = String(month + 1).padStart(2, '0');
         const datePad = String(date).padStart(2, '0');
@@ -586,6 +600,7 @@
         const isPaid = !!item.is_paid;
         const cashAmt = Number(item.amount) || 0;
         const prodAmt = Number(item.parsed_product_amount) || 0;
+        const types = item.cleaned_types || [];
 
         return `
           <div onclick="openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-palette-cream-card p-3 rounded-xl border border-palette-border hover:border-palette-midnight/40 transition cursor-pointer flex items-center justify-between gap-2 shadow-sm">
@@ -593,11 +608,11 @@
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="text-[9px] font-black px-1.5 py-0.5 rounded-md ${getBarColor(item)}">${item.category}</span>
                 ${item.platform ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-palette-sky-soft text-palette-midnight">🔗 ${item.platform}</span>` : ''}
-                ${item.content_type ? `<span class="text-[9px] font-bold text-palette-midnight bg-palette-blush-soft px-1.5 py-0.5 rounded-md">${item.content_type}</span>` : ''}
+                ${types.map(t => `<span class="text-[9px] font-bold text-palette-midnight bg-palette-blush-soft border border-palette-blush/60 px-1.5 py-0.5 rounded-md">${t}</span>`).join('')}
                 <span class="text-[10px] font-bold text-palette-muted">${item.event_date} ${item.event_time || ''}</span>
               </div>
               <h4 class="font-black text-xs sm:text-sm text-palette-midnight truncate">${item.title}</h4>
-              ${item.display_memo ? `<p class="text-[10px] text-palette-muted truncate">${item.display_memo}</p>` : ''}
+              ${item.display_memo ? `<p class="text-[10px] text-palette-muted truncate whitespace-pre-line">${item.display_memo}</p>` : ''}
             </div>
 
             <div class="flex flex-col items-end gap-1 shrink-0">
