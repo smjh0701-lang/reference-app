@@ -268,7 +268,6 @@
     let selectedDateStr = null;
     let selectedTypes = [];
 
-    // 드래그 앤 드롭 상태 변수
     let draggedItemId = null;
     let touchGhost = null;
     let currentDropTarget = null;
@@ -400,7 +399,7 @@
         document.getElementById('inputTopic').value = item.topic_category || '맛집';
         document.getElementById('inputCategory').value = item.category || '방문일';
         document.getElementById('inputDate').value = item.event_date || '';
-        document.getElementById('inputTime').value = item.event_time || '';
+        document.getElementById('inputTime').value = item.event_time ? item.event_time.slice(0, 5) : '';
         document.getElementById('inputProductAmount').value = item.parsed_product_amount || '';
         document.getElementById('inputAmount').value = item.amount || '';
         document.getElementById('inputIsPaid').checked = !!item.is_paid;
@@ -440,7 +439,7 @@
       const topic_category = document.getElementById('inputTopic').value;
       const category = document.getElementById('inputCategory').value;
       const event_date = document.getElementById('inputDate').value;
-      const event_time = document.getElementById('inputTime').value;
+      const event_time = document.getElementById('inputTime').value || null;
       const product_amount = Number(document.getElementById('inputProductAmount').value) || 0;
       const amount = Number(document.getElementById('inputAmount').value) || 0;
       const is_paid = document.getElementById('inputIsPaid').checked;
@@ -504,13 +503,11 @@
       }
     }
 
-    // 🚀 드래그 앤 드롭 이동 함수 (날짜 변경)
     async function moveScheduleToDate(scheduleId, newDateStr) {
       if (!scheduleId || !newDateStr) return;
       const item = scheduleList.find(s => s.id == scheduleId);
       if (!item || item.event_date === newDateStr) return;
 
-      // 즉시 UI 반영 (반응성 향상)
       item.event_date = newDateStr;
       renderCalendar();
       updateSummary();
@@ -525,7 +522,6 @@
       }
     }
 
-    // 마우스 드래그 이벤트
     function handleDragStart(e, id) {
       e.stopPropagation();
       draggedItemId = id;
@@ -562,7 +558,6 @@
       }
     }
 
-    // 모바일 터치 드래그 이벤트
     function handleTouchStart(e, id) {
       const touch = e.touches[0];
       draggedItemId = id;
@@ -650,7 +645,9 @@
         if (dayOfWeek === 0) dateColor = 'text-palette-rosewood';
         else if (dayOfWeek === 6) dateColor = 'text-palette-sky';
 
-        const dayEvents = scheduleList.filter(s => s.event_date === dateStr);
+        const dayEvents = scheduleList
+          .filter(s => s.event_date === dateStr)
+          .sort((a, b) => (a.event_time || '99:99').localeCompare(b.event_time || '99:99'));
 
         html += `
           <div 
@@ -668,20 +665,24 @@
             </div>
 
             <div class="space-y-0.5 mt-1 overflow-hidden w-full">
-              ${dayEvents.slice(0, 3).map(ev => `
-                <div 
-                  draggable="true"
-                  ondragstart="handleDragStart(event, ${ev.id})"
-                  ondragend="handleDragEnd(event)"
-                  ontouchstart="handleTouchStart(event, ${ev.id})"
-                  ontouchmove="handleTouchMove(event)"
-                  ontouchend="handleTouchEnd(event)"
-                  onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" 
-                  class="cursor-grab active:cursor-grabbing text-[8px] sm:text-[10px] px-1 py-0.5 rounded-[4px] truncate leading-tight transition-transform ${getBarColor(ev)}"
-                  title="드래그해서 날짜를 이동할 수 있습니다.">
-                  ${ev.title}
-                </div>
-              `).join('')}
+              ${dayEvents.slice(0, 3).map(ev => {
+                const timeText = ev.event_time ? ev.event_time.slice(0, 5) : '';
+                return `
+                  <div 
+                    draggable="true"
+                    ondragstart="handleDragStart(event, ${ev.id})"
+                    ondragend="handleDragEnd(event)"
+                    ontouchstart="handleTouchStart(event, ${ev.id})"
+                    ontouchmove="handleTouchMove(event)"
+                    ontouchend="handleTouchEnd(event)"
+                    onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" 
+                    class="cursor-grab active:cursor-grabbing text-[8px] sm:text-[10px] px-1 py-0.5 rounded-[4px] truncate leading-tight transition-transform flex items-center gap-1 ${getBarColor(ev)}"
+                    title="드래그해서 날짜를 이동할 수 있습니다.">
+                    ${timeText ? `<span class="opacity-75 font-semibold shrink-0 text-[7px] sm:text-[9px]">${timeText}</span>` : ''}
+                    <span class="truncate">${ev.title}</span>
+                  </div>
+                `;
+              }).join('')}
               ${dayEvents.length > 3 ? `<div class="text-[8px] text-palette-muted font-black text-center">+${dayEvents.length - 3}</div>` : ''}
             </div>
           </div>
@@ -724,12 +725,18 @@
 
       if (selectedDateStr) {
         titleElem.innerHTML = `<span>📌</span> ${selectedDateStr} 일정`;
-        targetEvents = scheduleList.filter(s => s.event_date === selectedDateStr);
+        targetEvents = scheduleList
+          .filter(s => s.event_date === selectedDateStr)
+          .sort((a, b) => (a.event_time || '99:99').localeCompare(b.event_time || '99:99'));
       } else {
         titleElem.innerHTML = `<span>📌</span> 이번 달 전체 일정`;
         targetEvents = scheduleList
           .filter(s => (s.event_date || '').startsWith(prefix))
-          .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+          .sort((a, b) => {
+            const dateComp = new Date(a.event_date) - new Date(b.event_date);
+            if (dateComp !== 0) return dateComp;
+            return (a.event_time || '99:99').localeCompare(b.event_time || '99:99');
+          });
       }
 
       document.getElementById('monthlyItemCount').innerText = `${targetEvents.length}건`;
@@ -744,6 +751,7 @@
         const cashAmt = Number(item.amount) || 0;
         const prodAmt = Number(item.parsed_product_amount) || 0;
         const types = item.cleaned_types || [];
+        const timeDisplay = item.event_time ? item.event_time.slice(0, 5) : '';
 
         return `
           <div onclick="openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-palette-cream-card p-3 rounded-xl border border-palette-border hover:border-palette-midnight/40 transition cursor-pointer flex items-center justify-between gap-2 shadow-sm">
@@ -752,7 +760,7 @@
                 <span class="text-[9px] font-black px-1.5 py-0.5 rounded-md ${getBarColor(item)}">${item.category}</span>
                 ${item.platform ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-palette-sky-soft text-palette-midnight">🔗 ${item.platform}</span>` : ''}
                 ${types.map(t => `<span class="text-[9px] font-bold text-palette-midnight bg-palette-blush-soft border border-palette-blush/60 px-1.5 py-0.5 rounded-md">${t}</span>`).join('')}
-                <span class="text-[10px] font-bold text-palette-muted">${item.event_date} ${item.event_time || ''}</span>
+                <span class="text-[10px] font-bold text-palette-muted">${item.event_date}${timeDisplay ? ` ${timeDisplay}` : ''}</span>
               </div>
               <h4 class="font-black text-xs sm:text-sm text-palette-midnight truncate">${item.title}</h4>
               ${item.display_memo ? `<p class="text-[10px] text-palette-muted truncate whitespace-pre-line">${item.display_memo}</p>` : ''}
