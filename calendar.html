@@ -62,24 +62,36 @@
       </button>
     </div>
 
-    <!-- 정산 요약 바 (모바일 콤팩트 가로 스크롤) -->
-    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
-      <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-palette-sky-soft border border-palette-sky/40 shrink-0">
-        <span class="text-[10px] font-bold text-palette-midnight">예상수익</span>
-        <span id="totalIncome" class="font-black text-palette-midnight">0원</span>
+    <!-- 정산 요약 바 (총액, 현금, 협찬가치, 총 건수) -->
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs pb-1">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-palette-midnight/20 shrink-0 shadow-sm">
+        <span class="text-[10px] font-black text-palette-midnight">✨ 총 혜택가치</span>
+        <span id="grandTotal" class="font-black text-palette-midnight text-xs">0원</span>
       </div>
-      <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-palette-sage-soft border border-palette-sage/50 shrink-0">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-palette-sky-soft border border-palette-sky/40 shrink-0">
+        <span class="text-[10px] font-bold text-palette-midnight">💵 현금(원고료)</span>
+        <span id="totalCash" class="font-black text-palette-midnight">0원</span>
+      </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-palette-sage-soft border border-palette-sage/50 shrink-0">
         <span class="text-[10px] font-bold text-palette-midnight">입금완료</span>
-        <span id="paidIncome" class="font-black text-palette-midnight">0원</span>
+        <span id="paidCash" class="font-black text-palette-midnight">0원</span>
       </div>
-      <div class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-palette-blush-soft border border-palette-rosewood/30 shrink-0">
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-palette-blush-soft border border-palette-rosewood/30 shrink-0">
         <span class="text-[10px] font-bold text-palette-rosewood">입금대기</span>
-        <span id="unpaidIncome" class="font-black text-palette-rosewood">0원</span>
+        <span id="unpaidCash" class="font-black text-palette-rosewood">0원</span>
+      </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-palette-rosewood-soft border border-palette-rosewood/20 shrink-0">
+        <span class="text-[10px] font-bold text-palette-rosewood">🎁 협찬제공</span>
+        <span id="totalProductValue" class="font-black text-palette-rosewood">0원</span>
+      </div>
+      <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/80 border border-palette-border shrink-0">
+        <span class="text-[10px] font-bold text-palette-muted">총 진행</span>
+        <span id="monthTotalCount" class="font-black text-palette-midnight">0건</span>
       </div>
     </div>
   </header>
 
-  <!-- 메인 캘린더 영역 (앱스타일 풀사이즈 라인 그리드) -->
+  <!-- 메인 캘린더 영역 -->
   <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto px-1 sm:px-6 pt-2 sm:pt-4 space-y-4">
     
     <div class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden">
@@ -94,7 +106,7 @@
         <div class="text-palette-sky">토</div>
       </div>
 
-      <!-- 날짜 셀들 (모바일 캘린더 앱 격자 라인) -->
+      <!-- 날짜 셀들 -->
       <div id="calendarGrid" class="grid grid-cols-7 border-collapse divide-x divide-y divide-palette-border/50"></div>
     </div>
 
@@ -192,14 +204,21 @@
           </div>
         </div>
 
-        <div class="p-3 bg-white rounded-xl border border-palette-border space-y-2">
-          <div>
-            <label class="block font-bold text-palette-midnight mb-1">정산 금액 (원)</label>
-            <input type="number" id="inputAmount" placeholder="0" class="w-full px-3 py-1.5 bg-palette-cream border border-palette-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-bold">
+        <!-- 혜택 및 정산 금액 분리 영역 -->
+        <div class="p-3 bg-white rounded-xl border border-palette-border space-y-2.5">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold text-palette-rosewood mb-1">🎁 협찬 제공가치 (원)</label>
+              <input type="number" id="inputProductAmount" placeholder="예: 50000 (식사/제품)" class="w-full px-3 py-1.5 bg-palette-cream border border-palette-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-rosewood text-palette-midnight font-bold">
+            </div>
+            <div>
+              <label class="block font-bold text-palette-midnight mb-1">💵 현금 리워드 (원)</label>
+              <input type="number" id="inputAmount" placeholder="예: 20000 (원고료)" class="w-full px-3 py-1.5 bg-palette-cream border border-palette-border rounded-lg focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-bold">
+            </div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 pt-1 border-t border-palette-border/50">
             <input type="checkbox" id="inputIsPaid" class="w-4 h-4 rounded text-palette-sage accent-palette-sage cursor-pointer">
-            <label for="inputIsPaid" class="font-bold text-palette-midnight cursor-pointer text-[11px]">입금 완료 처리됨</label>
+            <label for="inputIsPaid" class="font-bold text-palette-midnight cursor-pointer text-[11px]">현금 리워드 입금 완료 처리됨</label>
           </div>
         </div>
 
@@ -275,6 +294,7 @@
         document.getElementById('inputCategory').value = item.category || '방문일';
         document.getElementById('inputDate').value = item.event_date || '';
         document.getElementById('inputTime').value = item.event_time || '';
+        document.getElementById('inputProductAmount').value = item.product_amount || '';
         document.getElementById('inputAmount').value = item.amount || '';
         document.getElementById('inputIsPaid').checked = !!item.is_paid;
         document.getElementById('inputMemo').value = item.memo || '';
@@ -289,6 +309,7 @@
         document.getElementById('inputCategory').value = '방문일';
         document.getElementById('inputDate').value = dateStr || selectedDateStr || new Date().toISOString().split('T')[0];
         document.getElementById('inputTime').value = '';
+        document.getElementById('inputProductAmount').value = '';
         document.getElementById('inputAmount').value = '';
         document.getElementById('inputIsPaid').checked = false;
         document.getElementById('inputMemo').value = '';
@@ -310,13 +331,26 @@
       const category = document.getElementById('inputCategory').value;
       const event_date = document.getElementById('inputDate').value;
       const event_time = document.getElementById('inputTime').value;
+      const product_amount = Number(document.getElementById('inputProductAmount').value) || 0;
       const amount = Number(document.getElementById('inputAmount').value) || 0;
       const is_paid = document.getElementById('inputIsPaid').checked;
       const memo = document.getElementById('inputMemo').value;
 
       if (!title || !event_date) return alert('제목과 날짜는 필수입니다.');
 
-      const payload = { title, platform, content_type, topic_category, category, event_date, event_time, amount, is_paid, memo };
+      const payload = { 
+        title, 
+        platform, 
+        content_type, 
+        topic_category, 
+        category, 
+        event_date, 
+        event_time, 
+        product_amount,
+        amount, 
+        is_paid, 
+        memo 
+      };
 
       if (editingId) {
         await supabaseClient.from('schedules').update(payload).eq('id', editingId);
@@ -395,7 +429,7 @@
               </span>
             </div>
 
-            <!-- 네이버 캘린더 스타일 컬러 바 리스트 -->
+            <!-- 캘린더 컬러 바 리스트 -->
             <div class="space-y-0.5 mt-1 overflow-hidden w-full">
               ${dayEvents.slice(0, 3).map(ev => `
                 <div onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" class="text-[8px] sm:text-[10px] px-1 py-0.5 rounded-[4px] truncate leading-tight ${getBarColor(ev)}">
@@ -418,13 +452,19 @@
 
       const thisMonthEvents = scheduleList.filter(s => (s.event_date || '').startsWith(prefix));
 
-      const total = thisMonthEvents.reduce((sum, cur) => sum + (Number(cur.amount) || 0), 0);
-      const paid = thisMonthEvents.filter(s => s.is_paid).reduce((sum, cur) => sum + (Number(cur.amount) || 0), 0);
-      const unpaid = total - paid;
+      const totalCash = thisMonthEvents.reduce((sum, cur) => sum + (Number(cur.amount) || 0), 0);
+      const paidCash = thisMonthEvents.filter(s => s.is_paid).reduce((sum, cur) => sum + (Number(cur.amount) || 0), 0);
+      const unpaidCash = totalCash - paidCash;
+      
+      const totalProduct = thisMonthEvents.reduce((sum, cur) => sum + (Number(cur.product_amount) || 0), 0);
+      const grandTotal = totalCash + totalProduct;
 
-      document.getElementById('totalIncome').innerText = `${total.toLocaleString()}원`;
-      document.getElementById('paidIncome').innerText = `${paid.toLocaleString()}원`;
-      document.getElementById('unpaidIncome').innerText = `${unpaid.toLocaleString()}원`;
+      document.getElementById('grandTotal').innerText = `${grandTotal.toLocaleString()}원`;
+      document.getElementById('totalCash').innerText = `${totalCash.toLocaleString()}원`;
+      document.getElementById('paidCash').innerText = `${paidCash.toLocaleString()}원`;
+      document.getElementById('unpaidCash').innerText = `${unpaidCash.toLocaleString()}원`;
+      document.getElementById('totalProductValue').innerText = `${totalProduct.toLocaleString()}원`;
+      document.getElementById('monthTotalCount').innerText = `${thisMonthEvents.length}건`;
     }
 
     function renderDetailList() {
@@ -456,6 +496,9 @@
 
       container.innerHTML = targetEvents.map(item => {
         const isPaid = !!item.is_paid;
+        const cashAmt = Number(item.amount) || 0;
+        const prodAmt = Number(item.product_amount) || 0;
+
         return `
           <div onclick="openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-palette-cream-card p-3 rounded-xl border border-palette-border hover:border-palette-midnight/40 transition cursor-pointer flex items-center justify-between gap-2 shadow-sm">
             <div class="space-y-1 overflow-hidden flex-1">
@@ -470,12 +513,14 @@
             </div>
 
             <div class="flex flex-col items-end gap-1 shrink-0">
-              <span class="text-xs font-black ${item.amount > 0 ? 'text-palette-midnight' : 'text-palette-muted'}">
-                ${item.amount > 0 ? `${Number(item.amount).toLocaleString()}원` : '0원'}
-              </span>
-              ${item.amount > 0 ? `
+              <div class="text-right">
+                ${prodAmt > 0 ? `<div class="text-[10px] font-bold text-palette-rosewood">🎁 ${prodAmt.toLocaleString()}원</div>` : ''}
+                ${cashAmt > 0 ? `<div class="text-xs font-black text-palette-midnight">💵 ${cashAmt.toLocaleString()}원</div>` : ''}
+                ${prodAmt === 0 && cashAmt === 0 ? `<div class="text-xs font-bold text-palette-muted">0원</div>` : ''}
+              </div>
+              ${cashAmt > 0 ? `
                 <button onclick="togglePaidStatus(${item.id}, ${isPaid}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black ${isPaid ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood'}">
-                  ${isPaid ? '완료' : '대기'}
+                  ${isPaid ? '입금완료' : '입금대기'}
                 </button>
               ` : ''}
             </div>
