@@ -43,13 +43,10 @@
       </button>
     </div>
 
-    <!-- 탭 선택 (기획목록 / 달력 / 간단메모) -->
+    <!-- 탭 선택 (기획목록 / 간단메모) -->
     <div class="max-w-7xl mx-auto mt-4 flex bg-[#e8eef6]/70 dark:bg-stone-800/60 p-1 rounded-2xl gap-1 border border-[#cad7e6]/50 dark:border-stone-700">
       <button id="tabPlan" onclick="switchTab('plan')" class="flex-1 py-2.5 rounded-xl text-xs font-extrabold bg-white dark:bg-[#1f2024] text-[#c82823] shadow-xs transition">
         📋 기획 목록
-      </button>
-      <button id="tabCalendar" onclick="switchTab('calendar')" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-stone-500 hover:text-stone-800 dark:text-stone-400 transition">
-        📅 달력 보기
       </button>
       <button id="tabMemo" onclick="switchTab('quick_memo')" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-stone-500 hover:text-stone-800 dark:text-stone-400 transition">
         💡 간단 메모
@@ -97,30 +94,6 @@
           등록
         </button>
       </div>
-    </div>
-
-    <!-- 📅 달력 영역 -->
-    <div id="calendarView" class="hidden bg-white dark:bg-[#1f2024] p-6 rounded-2xl border border-stone-200/80 dark:border-stone-800 shadow-xs space-y-4">
-      <div class="flex items-center justify-between">
-        <button onclick="changeMonth(-1)" class="px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-stone-600 font-bold text-xs">◀ 이전달</button>
-        <h2 id="calendarTitle" class="font-black text-base text-stone-800 dark:text-stone-100">2026년 8월</h2>
-        <button onclick="changeMonth(1)" class="px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-stone-600 font-bold text-xs">다음달 ▶</button>
-      </div>
-
-      <!-- 일정 유형 범례 표 -->
-      <div class="flex flex-wrap gap-2 p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl text-[11px] font-bold border border-stone-200/60 dark:border-stone-700">
-        <span class="text-stone-400 font-bold">구분 색상:</span>
-        <span class="bg-[#2d6a4f] text-white px-2 py-0.5 rounded">🟩 블로그 방문일</span>
-        <span class="bg-[#1b4332] text-white px-2 py-0.5 rounded">📗 블로그 마감일</span>
-        <span class="bg-[#6b4c9a] text-white px-2 py-0.5 rounded">🟪 인스타 방문일</span>
-        <span class="bg-[#c82823] text-white px-2 py-0.5 rounded">📕 인스타 마감일</span>
-        <span class="bg-[#4a5568] text-white px-2 py-0.5 rounded">📘 일반 마감/일정</span>
-      </div>
-
-      <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-stone-400 pb-2 border-b dark:border-stone-800">
-        <span class="text-[#c82823]">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="text-[#5978a2]">토</span>
-      </div>
-      <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-xs"></div>
     </div>
 
     <!-- 🔍 검색 & 필터 & 선택 삭제 통합 컨트롤 바 -->
@@ -307,15 +280,12 @@
     let editingId = null;
     let editingMemoId = null;
 
-    let calDate = new Date();
-
     function switchTab(tab) {
       currentTab = tab;
       selectedItemIds.clear();
       updateSelectedCount();
 
       document.getElementById('tabPlan').className = tab === 'plan' ? 'flex-1 py-2.5 rounded-xl text-xs font-extrabold bg-white dark:bg-[#1f2024] text-[#c82823] shadow-xs' : 'flex-1 py-2.5 rounded-xl text-xs font-bold text-stone-500';
-      document.getElementById('tabCalendar').className = tab === 'calendar' ? 'flex-1 py-2.5 rounded-xl text-xs font-extrabold bg-white dark:bg-[#1f2024] text-[#c82823] shadow-xs' : 'flex-1 py-2.5 rounded-xl text-xs font-bold text-stone-500';
       document.getElementById('tabMemo').className = tab === 'quick_memo' ? 'flex-1 py-2.5 rounded-xl text-xs font-extrabold bg-white dark:bg-[#1f2024] text-[#c82823] shadow-xs' : 'flex-1 py-2.5 rounded-xl text-xs font-bold text-stone-500';
 
       const planFilterGroup = document.getElementById('planFilterGroup');
@@ -323,15 +293,6 @@
         planFilterGroup.classList.remove('hidden');
       } else {
         planFilterGroup.classList.add('hidden');
-      }
-
-      if (tab === 'calendar') {
-        document.getElementById('calendarView').classList.remove('hidden');
-        document.getElementById('bulkActionBar').classList.add('hidden');
-        renderCalendar();
-      } else {
-        document.getElementById('calendarView').classList.add('hidden');
-        document.getElementById('bulkActionBar').classList.remove('hidden');
       }
 
       renderList();
@@ -722,7 +683,6 @@
       referenceList = refData || [];
 
       calculateDashboard();
-      if (currentTab === 'calendar') renderCalendar();
       updateSelectedCount();
       renderList();
     }
@@ -745,55 +705,6 @@
       });
       document.getElementById('totalDonePay').innerText = `${done.toLocaleString()}원`;
       document.getElementById('totalPendingPay').innerText = `${pending.toLocaleString()}원`;
-    }
-
-    function changeMonth(delta) {
-      calDate.setMonth(calDate.getMonth() + delta);
-      renderCalendar();
-    }
-
-    function getTagColorClass(sType) {
-      switch(sType) {
-        case '블로그방문': return 'bg-[#2d6a4f] text-white';
-        case '블로그마감': return 'bg-[#1b4332] text-white';
-        case '인스타방문': return 'bg-[#6b4c9a] text-white';
-        case '인스타마감': return 'bg-[#c82823] text-white';
-        default: return 'bg-[#4a5568] text-white';
-      }
-    }
-
-    function renderCalendar() {
-      const year = calDate.getFullYear();
-      const month = calDate.getMonth();
-      document.getElementById('calendarTitle').innerText = `${year}년 ${month + 1}월`;
-
-      const firstDay = new Date(year, month, 1).getDay();
-      const lastDate = new Date(year, month + 1, 0).getDate();
-
-      const grid = document.getElementById('calendarGrid');
-      grid.innerHTML = '';
-
-      for (let i = 0; i < firstDay; i++) {
-        grid.innerHTML += `<div class="h-20 p-1 border border-transparent"></div>`;
-      }
-
-      for (let date = 1; date <= lastDate; date++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
-        const dayPlans = cachedData.filter(i => i.due_date === dateStr && i.memo_type === 'plan');
-
-        grid.innerHTML += `
-          <div class="h-20 p-1.5 border border-stone-200 dark:border-stone-800 rounded-xl flex flex-col justify-start overflow-hidden bg-white/70 dark:bg-stone-800/30">
-            <span class="font-bold text-[11px] text-stone-500">${date}</span>
-            <div class="space-y-1 overflow-y-auto no-scrollbar mt-0.5">
-              ${dayPlans.map(p => `
-                <div onclick='openModal(${JSON.stringify(p).replace(/'/g, "&apos;")})' class="text-[9px] font-bold truncate ${getTagColorClass(p.schedule_type)} px-1.5 py-0.5 rounded-md leading-tight cursor-pointer hover:opacity-90 transition">
-                  ${p.title}
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-      }
     }
 
     function getDDay(dateStr) {
@@ -829,11 +740,6 @@
 
     function renderList() {
       const container = document.getElementById('contentList');
-      if (currentTab === 'calendar') {
-        container.innerHTML = '';
-        return;
-      }
-
       const filtered = getCurrentlyFilteredData();
 
       if (filtered.length === 0) {
@@ -905,7 +811,7 @@
                 </div>
               ` : ''}
 
-              <!-- 🔗 레퍼런스 창고 원본 링크 바로가기 (Floaty Blue 감성) -->
+              <!-- 🔗 레퍼런스 창고 원본 링크 바로가기 -->
               ${linkedRefs.length > 0 ? `
                 <div class="flex flex-wrap gap-1.5 pt-0.5">
                   ${linkedRefs.map(r => `
