@@ -47,7 +47,7 @@
 </head>
 <body class="text-pin-charcoal min-h-screen pb-28">
 
-  <!-- 상단 네비게이션 헤더 -->
+  <!-- 상단 헤더 -->
   <header class="sticky top-0 z-40 bg-[#FAF8F5]/90 backdrop-blur-xl border-b border-pin-border px-5 sm:px-10 py-4">
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -70,7 +70,7 @@
   <!-- 메인 캘린더 & 수익 정산 영역 -->
   <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-4 sm:p-8 space-y-6">
 
-    <!-- 📊 이번 달 수익 통계 및 월 이동 바 -->
+    <!-- 이번 달 수익 통계 및 월 이동 바 -->
     <div class="bg-white border border-pin-border rounded-[32px] p-6 shadow-pin space-y-5">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
@@ -82,7 +82,7 @@
           </div>
         </div>
 
-        <!-- 💰 이번 달 실시간 정산 현황판 -->
+        <!-- 실시간 정산 현황판 -->
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex flex-col px-4 py-2 rounded-2xl bg-pin-fawn-light border border-pin-fawn/40">
             <span class="text-[10px] font-bold text-pin-fawn">이번 달 총 예상 수익</span>
@@ -108,7 +108,7 @@
       </div>
     </div>
 
-    <!-- 📅 달력 그리드 본체 -->
+    <!-- 달력 그리드 본체 -->
     <div class="bg-white border border-pin-border rounded-[32px] p-4 sm:p-7 shadow-pin overflow-hidden">
       <!-- 요일 헤더 -->
       <div class="grid grid-cols-7 text-center pb-3 border-b border-pin-border text-xs font-black text-pin-muted">
@@ -125,7 +125,7 @@
       <div id="calendarGrid" class="grid grid-cols-7 gap-1 sm:gap-2 pt-2 min-h-[520px]"></div>
     </div>
 
-    <!-- 📌 이번 달 등록된 전체 협찬 & 정산 장부 리스트 -->
+    <!-- 이번 달 등록된 전체 협찬 & 정산 장부 리스트 -->
     <div class="bg-white border border-pin-border rounded-[32px] p-6 shadow-pin space-y-4">
       <div class="flex items-center justify-between">
         <h3 class="text-base font-black text-pin-charcoal flex items-center gap-2">
@@ -138,7 +138,7 @@
 
   </main>
 
-  <!-- 📝 일정 / 협찬 등록 및 수정 모달 -->
+  <!-- 일정 / 협찬 등록 및 수정 모달 -->
   <div id="scheduleModal" class="fixed inset-0 bg-pin-charcoal/40 backdrop-blur-md z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
     <div class="bg-[#FAF8F5] rounded-t-[32px] sm:rounded-[32px] w-full max-w-md sm:max-w-lg p-7 space-y-4 max-h-[88vh] overflow-y-auto border border-pin-border shadow-pin-hover">
       <div class="flex justify-between items-center pb-3 border-b border-pin-border">
@@ -152,6 +152,21 @@
         <div>
           <label class="block font-bold text-pin-charcoal mb-1">제목 / 업체명</label>
           <input type="text" id="inputTitle" placeholder="예: 성수 브런치 카페, 제주 독채 펜션 협찬" class="w-full px-4 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-semibold">
+        </div>
+
+        <!-- 🏷️ 체험단 사이트 / 플랫폼 입력 -->
+        <div>
+          <label class="block font-bold text-pin-charcoal mb-1">체험단 사이트 / 플랫폼 (직접 입력 또는 선택)</label>
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            <button type="button" onclick="setPlatform('레뷰')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-pin-border hover:bg-pin-sky-light text-pin-charcoal transition">레뷰</button>
+            <button type="button" onclick="setPlatform('강남맛집')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-pin-border hover:bg-pin-sky-light text-pin-charcoal transition">강남맛집</button>
+            <button type="button" onclick="setPlatform('디너의여왕')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-pin-border hover:bg-pin-sky-light text-pin-charcoal transition">디너의여왕</button>
+            <button type="button" onclick="setPlatform('미블')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-pin-border hover:bg-pin-sky-light text-pin-charcoal transition">미블</button>
+            <button type="button" onclick="setPlatform('포블로그')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-pin-border hover:bg-pin-sky-light text-pin-charcoal transition">포블로그</button>
+            <button type="button" onclick="setPlatform('인스타 DM')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-pin-border hover:bg-pin-sky-light text-pin-charcoal transition">인스타 DM</button>
+            <button type="button" onclick="setPlatform('개별협찬')" class="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-pin-border hover:bg-pin-sky-light text-pin-charcoal transition">개별협찬</button>
+          </div>
+          <input type="text" id="inputPlatform" placeholder="예: 레뷰, 강남맛집, 인스타 DM, 광고대행사 등 직접 입력" class="w-full px-4 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-semibold">
         </div>
 
         <!-- 콘텐츠 유형 (8가지) -->
@@ -209,7 +224,7 @@
           </div>
         </div>
 
-        <!-- 💰 정산 금액 및 입금 상태 설정 -->
+        <!-- 정산 금액 및 입금 상태 설정 -->
         <div class="p-4 bg-white rounded-2xl border border-pin-border space-y-3">
           <div>
             <label class="block font-bold text-pin-charcoal mb-1">정산/원고료 금액 (원)</label>
@@ -247,6 +262,10 @@
     let scheduleList = [];
     let editingId = null;
     let currentFilter = 'ALL';
+
+    function setPlatform(name) {
+      document.getElementById('inputPlatform').value = name;
+    }
 
     function changeMonth(delta) {
       currentDate.setMonth(currentDate.getMonth() + delta);
@@ -288,6 +307,7 @@
         editingId = item.id;
         document.getElementById('modalTitle').innerHTML = '<span>✏️</span> 일정 / 협찬 수정';
         document.getElementById('inputTitle').value = item.title || '';
+        document.getElementById('inputPlatform').value = item.platform || '';
         document.getElementById('inputType').value = item.content_type || '블로그 게시글 체험단';
         document.getElementById('inputTopic').value = item.topic_category || '맛집';
         document.getElementById('inputCategory').value = item.category || '방문일';
@@ -301,6 +321,7 @@
         editingId = null;
         document.getElementById('modalTitle').innerHTML = '<span>📅</span> 새 일정 / 협찬 등록';
         document.getElementById('inputTitle').value = '';
+        document.getElementById('inputPlatform').value = '';
         document.getElementById('inputType').value = '블로그 게시글 체험단';
         document.getElementById('inputTopic').value = '맛집';
         document.getElementById('inputCategory').value = '방문일';
@@ -321,6 +342,7 @@
 
     async function saveSchedule() {
       const title = document.getElementById('inputTitle').value;
+      const platform = document.getElementById('inputPlatform').value;
       const content_type = document.getElementById('inputType').value;
       const topic_category = document.getElementById('inputTopic').value;
       const category = document.getElementById('inputCategory').value;
@@ -332,7 +354,7 @@
 
       if (!title || !event_date) return alert('제목과 날짜는 필수 입력 항목입니다.');
 
-      const payload = { title, content_type, topic_category, category, event_date, event_time, amount, is_paid, memo };
+      const payload = { title, platform, content_type, topic_category, category, event_date, event_time, amount, is_paid, memo };
 
       if (editingId) {
         await supabaseClient.from('schedules').update(payload).eq('id', editingId);
@@ -470,6 +492,7 @@
             <div class="space-y-1.5 flex-1">
               <div class="flex flex-wrap items-center gap-1.5">
                 <span class="text-[9px] font-black px-2 py-0.5 rounded-md border ${getBadgeStyle(item.category)}">${item.category}</span>
+                ${item.platform ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-pin-sky-light text-pin-sky border border-pin-sky/40">🔗 ${item.platform}</span>` : ''}
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-pin-border text-pin-charcoal">${item.content_type || '체험단'}</span>
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-pin-border text-pin-muted">${getTopicEmoji(item.topic_category)} ${item.topic_category || '기타'}</span>
                 <span class="text-xs font-bold text-pin-muted ml-1">${item.event_date} ${item.event_time || ''}</span>
@@ -478,7 +501,6 @@
               ${item.memo ? `<p class="text-xs text-pin-muted font-medium">${item.memo}</p>` : ''}
             </div>
 
-            <!-- 정산 금액 & 입금 완료 토글 버튼 -->
             <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-pin-border/60">
               <span class="text-xs sm:text-sm font-black ${item.amount > 0 ? 'text-pin-charcoal' : 'text-pin-muted'}">
                 ${item.amount > 0 ? `💰 ${Number(item.amount).toLocaleString()}원` : '무료체험/0원'}
