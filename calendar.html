@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko" class="antialiased">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>스케줄 & 정산 캘린더</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            pin: {
+              pink: '#FAA4B5',
+              'pink-light': '#FFF0F3',
+              fawn: '#F8B77C',
+              'fawn-light': '#FFF6EE',
+              maize: '#FFF183',
+              'maize-light': '#FFFDE8',
+              sky: '#70C1E1',
+              'sky-light': '#EEF8FC',
+              olivine: '#82BA88',
+              'olivine-light': '#F0F7F1',
+              charcoal: '#2D3139',
+              muted: '#7A828E',
+              border: '#F0EBE4'
+            }
+          },
+          boxShadow: {
+            'pin': '0 8px 30px -4px rgba(45, 49, 57, 0.06), 0 2px 6px -1px rgba(45, 49, 57, 0.04)',
+            'pin-hover': '0 16px 36px -4px rgba(45, 49, 57, 0.12), 0 4px 12px -2px rgba(45, 49, 57, 0.06)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { 
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background-color: #FAF8F5;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="text-pin-charcoal min-h-screen pb-28">
+
+  <!-- 헤더 영역 -->
+  <header class="sticky top-0 z-40 bg-[#FAF8F5]/90 backdrop-blur-xl border-b border-pin-border px-5 sm:px-10 py-4">
+    <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-pin-sky-light border border-pin-sky/40 flex items-center justify-center text-lg shadow-sm">
+          📅
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-black tracking-tight text-pin-charcoal">
+            Schedule Calendar
+          </h1>
+          <p class="text-[10px] text-pin-muted font-medium">방문일 · 원고마감 · 정산 스케줄러</p>
+        </div>
+      </div>
+      <button onclick="openModal()" class="flex items-center gap-1.5 px-4 py-2 bg-pin-charcoal hover:bg-black text-[#FAF8F5] rounded-full text-xs font-bold transition duration-200 shadow-sm active:scale-95">
+        <span>+</span> 새 일정 등록
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 캘린더 영역 -->
+  <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto p-4 sm:p-8 space-y-6">
+
+    <!-- 월 이동 & 이번 달 요약 위젯 -->
+    <div class="bg-white border border-pin-border rounded-[32px] p-6 shadow-pin flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <h2 id="currentMonthYear" class="text-xl sm:text-2xl font-black tracking-tight text-pin-charcoal"></h2>
+        <div class="flex items-center gap-1.5 bg-[#FAF8F5] p-1 rounded-full border border-pin-border">
+          <button onclick="changeMonth(-1)" class="w-7 h-7 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center text-xs font-bold shadow-sm transition">❮</button>
+          <button onclick="goToday()" class="px-3 py-1 rounded-full text-[11px] font-bold hover:bg-white transition">오늘</button>
+          <button onclick="changeMonth(1)" class="w-7 h-7 rounded-full bg-white hover:bg-slate-100 flex items-center justify-center text-xs font-bold shadow-sm transition">❯</button>
+        </div>
+      </div>
+
+      <!-- 이번 달 스케줄/정산 요약 태그 -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-pin-sky-light text-pin-sky font-bold border border-pin-sky/30">
+          <span>📸 방문</span>
+          <span id="visitCount" class="font-black text-pin-charcoal">0건</span>
+        </div>
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-pin-pink-light text-pin-pink font-bold border border-pin-pink/30">
+          <span>⏰ 마감</span>
+          <span id="deadlineCount" class="font-black text-pin-charcoal">0건</span>
+        </div>
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-pin-fawn-light text-pin-fawn font-bold border border-pin-fawn/30">
+          <span>💰 정산예정</span>
+          <span id="totalSettlement" class="font-black text-pin-charcoal">0원</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 달력 본체 그리드 -->
+    <div class="bg-white border border-pin-border rounded-[32px] p-4 sm:p-7 shadow-pin overflow-hidden">
+      <!-- 요일 헤더 -->
+      <div class="grid grid-cols-7 text-center pb-3 border-b border-pin-border text-xs font-black text-pin-muted">
+        <div class="text-rose-500">일</div>
+        <div>월</div>
+        <div>화</div>
+        <div>수</div>
+        <div>목</div>
+        <div>금</div>
+        <div class="text-sky-500">토</div>
+      </div>
+
+      <!-- 날짜 셀들 -->
+      <div id="calendarGrid" class="grid grid-cols-7 gap-1 sm:gap-2 pt-2 min-h-[500px]"></div>
+    </div>
+
+    <!-- 다가오는 마감 & 일정 목록 (Upcoming) -->
+    <div class="bg-white border border-pin-border rounded-[32px] p-6 shadow-pin space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-black text-pin-charcoal flex items-center gap-2">
+          <span>📌</span> 다가오는 주요 일정 & 마감 (D-Day)
+        </h3>
+      </div>
+      <div id="upcomingList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+    </div>
+
+  </main>
+
+  <!-- 일정 등록 / 수정 모달 -->
+  <div id="scheduleModal" class="fixed inset-0 bg-pin-charcoal/40 backdrop-blur-md z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+    <div class="bg-[#FAF8F5] rounded-t-[32px] sm:rounded-[32px] w-full max-w-md sm:max-w-lg p-7 space-y-4 max-h-[88vh] overflow-y-auto border border-pin-border shadow-pin-hover">
+      <div class="flex justify-between items-center pb-3 border-b border-pin-border">
+        <h2 id="modalTitle" class="text-base font-extrabold text-pin-charcoal flex items-center gap-2">
+          <span>📅</span> 새 일정 등록
+        </h2>
+        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-white border border-pin-border text-pin-muted hover:text-pin-charcoal flex items-center justify-center text-lg font-bold transition">&times;</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-pin-charcoal mb-1">일정 / 프로젝트 명</label>
+          <input type="text" id="inputTitle" placeholder="예: 성수동 팝업 방문 촬영, 뷰티 원고 마감" class="w-full px-4 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-semibold">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-bold text-pin-charcoal mb-1">카테고리</label>
+            <select id="inputCategory" onchange="toggleAmountInput()" class="w-full px-3.5 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-bold">
+              <option value="방문일">📸 방문일</option>
+              <option value="원고마감">⏰ 원고마감</option>
+              <option value="정산예정">💰 정산예정</option>
+              <option value="개인일정">☕ 개인일정</option>
+              <option value="기타">💡 기타</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-pin-charcoal mb-1">날짜</label>
+            <input type="date" id="inputDate" class="w-full px-3.5 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-bold">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-bold text-pin-charcoal mb-1">시간 (선택)</label>
+            <input type="time" id="inputTime" class="w-full px-3.5 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-medium">
+          </div>
+          <div id="amountField" class="hidden">
+            <label class="block font-bold text-pin-charcoal mb-1">정산 예정 금액 (원)</label>
+            <input type="number" id="inputAmount" placeholder="250000" class="w-full px-3.5 py-2.5 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 text-pin-charcoal font-semibold">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-pin-charcoal mb-1">메모 / 준비사항</label>
+          <textarea id="inputMemo" rows="3" placeholder="카메라 챙기기, 피드백 반영 사항, 요청 키워드 등" class="w-full px-4 py-3 bg-white border border-pin-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-pin-sky/60 resize-none text-pin-charcoal font-medium"></textarea>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="saveSchedule()" id="saveBtn" class="flex-1 py-3.5 bg-pin-charcoal hover:bg-black active:scale-98 text-[#FAF8F5] font-extrabold rounded-2xl text-xs transition duration-200 shadow-md">
+          저장하기
+        </button>
+        <button id="deleteBtn" onclick="deleteSchedule()" class="hidden px-5 py-3.5 bg-rose-100 hover:bg-rose-200 text-rose-600 font-extrabold rounded-2xl text-xs transition">
+          삭제
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://mvgxqnqucbcipyrwdalj.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentDate = new Date();
+    let scheduleList = [];
+    let editingId = null;
+
+    function toggleAmountInput() {
+      const cat = document.getElementById('inputCategory').value;
+      const field = document.getElementById('amountField');
+      if (cat === '정산예정') field.classList.remove('hidden');
+      else field.classList.add('hidden');
+    }
+
+    function changeMonth(delta) {
+      currentDate.setMonth(currentDate.getMonth() + delta);
+      renderCalendar();
+      updateSummary();
+    }
+
+    function goToday() {
+      currentDate = new Date();
+      renderCalendar();
+      updateSummary();
+    }
+
+    async function loadData() {
+      const { data } = await supabaseClient.from('schedules').select('*');
+      scheduleList = data || [];
+      renderCalendar();
+      updateSummary();
+      renderUpcoming();
+    }
+
+    function openModal(dateStr = '', item = null) {
+      if (item) {
+        editingId = item.id;
+        document.getElementById('modalTitle').innerHTML = '<span>✏️</span> 일정 수정';
+        document.getElementById('inputTitle').value = item.title || '';
+        document.getElementById('inputCategory').value = item.category || '개인일정';
+        document.getElementById('inputDate').value = item.event_date || '';
+        document.getElementById('inputTime').value = item.event_time || '';
+        document.getElementById('inputAmount').value = item.amount || '';
+        document.getElementById('inputMemo').value = item.memo || '';
+        document.getElementById('deleteBtn').classList.remove('hidden');
+      } else {
+        editingId = null;
+        document.getElementById('modalTitle').innerHTML = '<span>📅</span> 새 일정 등록';
+        document.getElementById('inputTitle').value = '';
+        document.getElementById('inputCategory').value = '방문일';
+        document.getElementById('inputDate').value = dateStr || new Date().toISOString().split('T')[0];
+        document.getElementById('inputTime').value = '';
+        document.getElementById('inputAmount').value = '';
+        document.getElementById('inputMemo').value = '';
+        document.getElementById('deleteBtn').classList.add('hidden');
+      }
+      toggleAmountInput();
+      document.getElementById('scheduleModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('scheduleModal').classList.add('hidden');
+      editingId = null;
+    }
+
+    async function saveSchedule() {
+      const title = document.getElementById('inputTitle').value;
+      const category = document.getElementById('inputCategory').value;
+      const event_date = document.getElementById('inputDate').value;
+      const event_time = document.getElementById('inputTime').value;
+      const amount = Number(document.getElementById('inputAmount').value) || 0;
+      const memo = document.getElementById('inputMemo').value;
+
+      if (!title || !event_date) return alert('일정 명과 날짜는 필수입니다.');
+
+      const payload = { title, category, event_date, event_time, amount, memo };
+
+      if (editingId) {
+        await supabaseClient.from('schedules').update(payload).eq('id', editingId);
+      } else {
+        await supabaseClient.from('schedules').insert([payload]);
+      }
+
+      closeModal();
+      loadData();
+    }
+
+    async function deleteSchedule() {
+      if (!editingId) return;
+      if (!confirm('이 일정을 삭제할까요?')) return;
+      await supabaseClient.from('schedules').delete().eq('id', editingId);
+      closeModal();
+      loadData();
+    }
+
+    function getBadgeStyle(cat) {
+      switch(cat) {
+        case '방문일': return 'bg-pin-sky-light text-pin-sky border-pin-sky/40';
+        case '원고마감': return 'bg-pin-pink-light text-pin-pink border-pin-pink/40';
+        case '정산예정': return 'bg-pin-fawn-light text-pin-fawn border-pin-fawn/40';
+        case '개인일정': return 'bg-pin-olivine-light text-pin-olivine border-pin-olivine/40';
+        default: return 'bg-pin-maize-light text-pin-charcoal border-pin-maize/60';
+      }
+    }
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+
+      document.getElementById('currentMonthYear').innerText = `${year}년 ${month + 1}월`;
+
+      const firstDayIndex = new Date(year, month, 1).getDay();
+      const lastDate = new Date(year, month + 1, 0).getDate();
+      const prevLastDate = new Date(year, month, 0).getDate();
+
+      const grid = document.getElementById('calendarGrid');
+      let html = '';
+
+      // 이전 달 날짜 채우기
+      for (let i = firstDayIndex; i > 0; i--) {
+        html += `<div class="p-2 min-h-[90px] sm:min-h-[110px] rounded-2xl bg-slate-50/40 text-slate-300 text-xs font-semibold select-none">${prevLastDate - i + 1}</div>`;
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      // 이번 달 날짜들
+      for (let date = 1; date <= lastDate; date++) {
+        const monthPad = String(month + 1).padStart(2, '0');
+        const datePad = String(date).padStart(2, '0');
+        const dateStr = `${year}-${monthPad}-${datePad}`;
+        const isToday = dateStr === todayStr;
+
+        const dayEvents = scheduleList.filter(s => s.event_date === dateStr);
+
+        html += `
+          <div onclick="openModal('${dateStr}')" class="p-1.5 sm:p-2.5 min-h-[95px] sm:min-h-[115px] rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between hover:bg-[#FAF8F5] hover:border-pin-sky/50 ${isToday ? 'border-pin-charcoal bg-pin-maize-light/40 shadow-sm' : 'border-pin-border bg-white'}">
+            <div class="flex items-center justify-between">
+              <span class="text-xs sm:text-sm font-black ${isToday ? 'w-6 h-6 rounded-full bg-pin-charcoal text-white flex items-center justify-center text-[11px]' : 'text-pin-charcoal'}">${date}</span>
+              ${dayEvents.length > 0 ? `<span class="text-[9px] font-bold text-pin-muted">${dayEvents.length}개</span>` : ''}
+            </div>
+
+            <!-- 이벤트 칩 목록 -->
+            <div class="space-y-1 mt-1 overflow-hidden flex-1">
+              ${dayEvents.slice(0, 3).map(ev => `
+                <div onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-lg border truncate ${getBadgeStyle(ev.category)}">
+                  ${ev.event_time ? `<span class="opacity-70 mr-0.5">${ev.event_time}</span>` : ''}${ev.title}
+                </div>
+              `).join('')}
+              ${dayEvents.length > 3 ? `<div class="text-[9px] text-pin-muted font-bold text-center">+${dayEvents.length - 3}건 더보기</div>` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function updateSummary() {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const prefix = `${year}-${month}`;
+
+      const thisMonthEvents = scheduleList.filter(s => (s.event_date || '').startsWith(prefix));
+
+      const visits = thisMonthEvents.filter(s => s.category === '방문일').length;
+      const deadlines = thisMonthEvents.filter(s => s.category === '원고마감').length;
+      const settlement = thisMonthEvents.filter(s => s.category === '정산예정').reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+
+      document.getElementById('visitCount').innerText = `${visits}건`;
+      document.getElementById('deadlineCount').innerText = `${deadlines}건`;
+      document.getElementById('totalSettlement').innerText = `${settlement.toLocaleString()}원`;
+    }
+
+    function renderUpcoming() {
+      const container = document.getElementById('upcomingList');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const sorted = [...scheduleList]
+        .filter(s => new Date(s.event_date) >= today)
+        .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+        .slice(0, 6);
+
+      if (sorted.length === 0) {
+        container.innerHTML = `<p class="col-span-full py-8 text-center text-xs text-pin-muted font-medium">예정된 일정이 없습니다.</p>`;
+        return;
+      }
+
+      container.innerHTML = sorted.map(item => {
+        const itemDate = new Date(item.event_date);
+        itemDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((itemDate - today) / (1000 * 60 * 60 * 24));
+        const dDayStr = diffDays === 0 ? 'D-Day' : `D-${diffDays}`;
+
+        return `
+          <div onclick="openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-[#FAF8F5] p-4 rounded-2xl border border-pin-border hover:border-pin-charcoal/40 transition cursor-pointer flex items-center justify-between shadow-sm">
+            <div class="space-y-1 overflow-hidden pr-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[9px] font-extrabold px-2 py-0.5 rounded-md border ${getBadgeStyle(item.category)}">${item.category}</span>
+                <span class="text-xs font-bold text-pin-muted">${item.event_date} ${item.event_time || ''}</span>
+              </div>
+              <h4 class="font-bold text-xs sm:text-sm text-pin-charcoal truncate">${item.title}</h4>
+              ${item.amount > 0 ? `<p class="text-[11px] font-extrabold text-pin-fawn">💰 ${Number(item.amount).toLocaleString()}원</p>` : ''}
+            </div>
+            <span class="text-xs font-black px-2.5 py-1 rounded-xl ${diffDays <= 2 ? 'bg-rose-500 text-white' : 'bg-pin-charcoal text-white'} shadow-sm whitespace-nowrap">${dDayStr}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
