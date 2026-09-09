@@ -227,10 +227,10 @@
           <input type="text" id="inputPlatform" placeholder="예: 레뷰, 리뷰노트, 인스타 DM 등" class="w-full px-3.5 py-2 bg-white border border-palette-border rounded-xl focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-medium">
         </div>
 
-        <!-- 콘텐츠 형태 태그 선택 -->
+        <!-- 콘텐츠 형태 태그 선택 (리뷰 태그 포함 확장) -->
         <div>
           <label class="block font-bold text-palette-midnight mb-1">콘텐츠 형태 (중복 선택 가능)</label>
-          <div class="grid grid-cols-2 gap-1.5" id="contentTypeContainer">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5" id="contentTypeContainer">
             <button type="button" onclick="toggleContentType('블로그 글')" data-tag="블로그 글" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>✍️ 블로그 글</span>
               <span class="check-icon text-[10px] opacity-0">✓</span>
@@ -245,6 +245,18 @@
             </button>
             <button type="button" onclick="toggleContentType('인스타 릴스')" data-tag="인스타 릴스" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
               <span>⚡ 인스타 릴스</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
+            </button>
+            <button type="button" onclick="toggleContentType('네이버 리뷰')" data-tag="네이버 리뷰" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+              <span>⭐ 네이버 리뷰</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
+            </button>
+            <button type="button" onclick="toggleContentType('구글 리뷰')" data-tag="구글 리뷰" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+              <span>🗺️ 구글 리뷰</span>
+              <span class="check-icon text-[10px] opacity-0">✓</span>
+            </button>
+            <button type="button" onclick="toggleContentType('티맵 리뷰')" data-tag="티맵 리뷰" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
+              <span>🚗 티맵 리뷰</span>
               <span class="check-icon text-[10px] opacity-0">✓</span>
             </button>
             <button type="button" onclick="toggleContentType('유튜브/쇼츠')" data-tag="유튜브/쇼츠" class="type-btn px-2.5 py-2 rounded-xl text-[11px] font-bold bg-white border border-palette-border text-palette-midnight text-left flex items-center justify-between transition">
@@ -324,7 +336,13 @@
       const resultSet = new Set();
 
       parts.forEach(p => {
-        if (p.includes('블로그') && (p.includes('게시글') || p.includes('글') || p === '블로그')) {
+        if (p.includes('네이버') && p.includes('리뷰')) {
+          resultSet.add('네이버 리뷰');
+        } else if (p.includes('구글') && p.includes('리뷰')) {
+          resultSet.add('구글 리뷰');
+        } else if (p.includes('티맵') && p.includes('리뷰')) {
+          resultSet.add('티맵 리뷰');
+        } else if (p.includes('블로그') && (p.includes('게시글') || p.includes('글') || p === '블로그')) {
           resultSet.add('블로그 글');
         } else if (p.includes('블로그') && p.includes('클립')) {
           resultSet.add('블로그 클립');
@@ -344,7 +362,6 @@
       return Array.from(resultSet);
     }
 
-    // 메모에서 메타데이터 파싱 (협찬금액, 동행인, 개별 완료 태그 목록)
     function parseItemData(item) {
       let product_amount = Number(item.product_amount) || 0;
       let companion = item.companion || '';
@@ -367,7 +384,6 @@
         }
       }
 
-      // 개별 완료 태그 추출 ([DONE_TAGS:블로그 글,블로그 클립])
       if (cleanMemo.includes('[DONE_TAGS:')) {
         const match = cleanMemo.match(/\[DONE_TAGS:(.*?)\]/);
         if (match) {
@@ -375,7 +391,6 @@
           cleanMemo = cleanMemo.replace(/\[DONE_TAGS:.*?\]\n?/, '');
         }
       } else if (cleanMemo.includes('[POST_DONE:1]')) {
-        // 기존 단일 완료 플래그 호환
         cleanMemo = cleanMemo.replace(/\[POST_DONE:1\]\n?/, '');
         doneTags = cleanContentTypes(item.content_type);
       }
@@ -506,7 +521,6 @@
       openDayDetailModal(dateStr);
     }
 
-    // 💡 날짜별 일정 팝업: 개별 콘텐츠 형태별 원클릭 완료 토글 제공
     function openDayDetailModal(dateStr) {
       const modal = document.getElementById('dayDetailModal');
       const titleElem = document.getElementById('dayDetailModalTitle');
@@ -554,7 +568,6 @@
                 <button onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="text-xs text-palette-muted hover:text-palette-midnight shrink-0 p-1">✏️ 수정</button>
               </div>
 
-              <!-- 원고마감일 경우: 각 콘텐츠별 체크 버튼들 -->
               ${item.category === '원고마감' && totalTags.length > 0 ? `
                 <div class="pt-1.5 border-t border-palette-border/60 flex items-center gap-1.5 flex-wrap">
                   <span class="text-[10px] font-bold text-palette-muted">작성 완료 체크:</span>
@@ -647,12 +660,10 @@
 
       if (!title || !event_date) return alert('제목과 날짜는 필수입니다.');
 
-      // 기존 완료 태그 상태 보존
       let existingDoneTags = [];
       if (editingId) {
         const prev = scheduleList.find(s => s.id == editingId);
         if (prev) {
-          // 새로 선택된 형태에 남아있는 태그만 유지
           existingDoneTags = (prev.done_tags || []).filter(t => selectedTypes.includes(t));
         }
       }
@@ -692,7 +703,6 @@
       }
     }
 
-    // 💡 특정 콘텐츠 태그 완료 토글 함수
     async function toggleTagComplete(id, tag, event) {
       if (event) event.stopPropagation();
       const item = scheduleList.find(s => s.id == id);
@@ -706,7 +716,6 @@
         currentDoneTags.push(tag);
       }
 
-      // memo 갱신
       let memo = item.memo || '';
       memo = memo.replace(/\[DONE_TAGS:.*?\]\n?/, '');
       memo = memo.replace(/\[POST_DONE:1\]\n?/, '');
@@ -854,7 +863,6 @@
       draggedItemId = null;
     }
 
-    // 💡 캘린더 바 스타일: 미완료(핑크) / 부분완료(부드러운 세이지) / 전체완료(연회색+취소선)
     function getBarColor(item) {
       if (item.category === '원고마감') {
         const totalCount = (item.cleaned_types || []).length;
@@ -864,10 +872,8 @@
           return 'bg-[#EBE7DF] text-palette-muted line-through opacity-75 font-bold';
         }
         if (doneCount > 0) {
-          // 일부만 완료된 상태 (눈에 띄되 차분한 세이지 톤)
           return 'bg-[#E5ECD9] text-[#4A5D32] border border-[#BACDA6] font-extrabold';
         }
-        // 하나도 안 끝난 원고 (기존 마감 핑크)
         return 'bg-palette-blush text-palette-rosewood font-extrabold shadow-sm';
       }
       if (item.category === '방문일') return 'bg-palette-sage-soft text-palette-midnight font-bold border border-palette-sage/40';
@@ -933,7 +939,6 @@
                 const doneCount = (ev.done_tags || []).length;
                 const isAllDone = totalCount > 0 && doneCount >= totalCount;
 
-                // 미니멀한 카운터 뱃지 (1/2, 2/3, ✓)
                 let counterBadge = '';
                 if (ev.category === '원고마감' && totalCount > 0) {
                   if (isAllDone) {
@@ -1065,7 +1070,6 @@
               </div>
             </div>
 
-            <!-- 원고마감 태그별 개별 체크 라인 -->
             ${item.category === '원고마감' && totalTags.length > 0 ? `
               <div class="pt-1.5 border-t border-palette-border/50 flex items-center gap-1.5 flex-wrap">
                 <span class="text-[10px] font-bold text-palette-muted">작성 완료 여부:</span>
