@@ -135,7 +135,7 @@
       <div class="flex justify-between items-center pb-2 border-b border-palette-border">
         <div>
           <h3 id="dayDetailModalTitle" class="text-sm sm:text-base font-black text-palette-midnight"></h3>
-          <p class="text-[11px] text-palette-muted font-semibold">수정할 일정을 누르거나 새 일정을 추가하세요.</p>
+          <p class="text-[11px] text-palette-muted font-semibold">수정할 일정을 누르거나 완료 상태를 변경하세요.</p>
         </div>
         <button onclick="closeDayDetailModal()" class="w-7 h-7 rounded-full bg-white border border-palette-border text-palette-muted hover:text-palette-midnight flex items-center justify-center text-base font-bold">&times;</button>
       </div>
@@ -160,7 +160,7 @@
 
       <div class="space-y-3 text-xs">
         
-        <!-- 일정 구분 (방문일 / 원고마감 / 정산일 / 일반일정) -->
+        <!-- 일정 구분 및 작성 완료 여부 -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block font-bold text-palette-midnight mb-1">일정 구분</label>
@@ -184,7 +184,16 @@
           </div>
         </div>
 
-        <!-- 2번 기능: 원고마감 or 정산일 선택 시 나타나는 방문일 끌어오기 탭 -->
+        <!-- 💡 원고 작성/예약발행 완료 체크박스 (원고마감일 때 눈에 띄게 표시) -->
+        <div id="postCompleteContainer" class="hidden p-2.5 bg-palette-sage-soft/60 border border-palette-sage/60 rounded-xl flex items-center justify-between">
+          <div>
+            <span class="font-bold text-palette-midnight block">✍️ 원고 작성 및 예약발행 완료 여부</span>
+            <span class="text-[10px] text-palette-muted">체크하면 캘린더에서 완료 상태로 구분 표시됩니다.</span>
+          </div>
+          <input type="checkbox" id="inputIsPostCompleted" class="w-5 h-5 rounded text-palette-sage accent-palette-sage cursor-pointer">
+        </div>
+
+        <!-- 방문일 일정 불러오기 탭 -->
         <div id="importVisitContainer" class="hidden p-2.5 bg-palette-blush-soft/70 border border-palette-rosewood/30 rounded-xl space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="font-bold text-palette-rosewood flex items-center gap-1">
@@ -202,7 +211,7 @@
           <input type="text" id="inputTitle" placeholder="예: 성수 브런치 카페, 제주 독채 펜션" class="w-full px-3.5 py-2 bg-white border border-palette-border rounded-xl focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-semibold">
         </div>
 
-        <!-- 3번 기능: 동행인 (누구랑 가는지) 기재 필드 -->
+        <!-- 동행인 필드 -->
         <div>
           <label class="block font-bold text-palette-midnight mb-1">동행인 (누구랑)</label>
           <div class="flex flex-wrap gap-1 mb-1.5">
@@ -345,10 +354,11 @@
       return Array.from(resultSet);
     }
 
-    // 메모에서 협찬금액 및 동행인 파싱 헬퍼 함수
+    // 메모에서 메타데이터 파싱 (협찬금액, 동행인, 원고작성완료 여부)
     function parseItemData(item) {
       let product_amount = Number(item.product_amount) || 0;
       let companion = item.companion || '';
+      let is_post_completed = !!item.is_post_completed;
       let cleanMemo = item.memo || '';
 
       if (!product_amount && cleanMemo.includes('[PROD_VAL:')) {
@@ -367,12 +377,18 @@
         }
       }
 
+      if (cleanMemo.includes('[POST_DONE:1]')) {
+        is_post_completed = true;
+        cleanMemo = cleanMemo.replace(/\[POST_DONE:1\]\n?/, '');
+      }
+
       const cleanedTypes = cleanContentTypes(item.content_type);
 
       return { 
         ...item, 
         parsed_product_amount: product_amount, 
         parsed_companion: companion,
+        is_post_completed: is_post_completed,
         display_memo: cleanMemo,
         cleaned_types: cleanedTypes
       };
@@ -413,16 +429,22 @@
       });
     }
 
-    // 2번 기능: 카테고리 변경 시 방문일 불러오기 셀렉트박스 표시 및 옵션 생성
+    // 카테고리 변경 시 원고완료 박스 및 방문일 가져오기 박스 제어
     function onCategoryChange() {
       const cat = document.getElementById('inputCategory').value;
-      const container = document.getElementById('importVisitContainer');
+      const importContainer = document.getElementById('importVisitContainer');
+      const postDoneContainer = document.getElementById('postCompleteContainer');
       const select = document.getElementById('visitScheduleSelect');
 
+      if (cat === '원고마감') {
+        postDoneContainer.classList.remove('hidden');
+      } else {
+        postDoneContainer.classList.add('hidden');
+      }
+
       if (cat === '원고마감' || cat === '정산일') {
-        container.classList.remove('hidden');
+        importContainer.classList.remove('hidden');
         
-        // 방문일 일정들 추출 (최신순)
         const visits = scheduleList
           .filter(s => s.category === '방문일')
           .sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
@@ -430,11 +452,10 @@
         select.innerHTML = '<option value="">불러올 방문일 일정을 선택하세요</option>' + 
           visits.map(v => `<option value="${v.id}">[${v.event_date}] ${v.title} (${v.platform || '개별'})</option>`).join('');
       } else {
-        container.classList.add('hidden');
+        importContainer.classList.add('hidden');
       }
     }
 
-    // 2번 기능: 선택한 방문일 데이터 양식에 복사 채우기
     function applySelectedVisitSchedule() {
       const select = document.getElementById('visitScheduleSelect');
       const selectedId = select.value;
@@ -446,7 +467,6 @@
       const currentCat = document.getElementById('inputCategory').value;
       const prefixTag = currentCat === '원고마감' ? '[원고마감] ' : '[정산] ';
       
-      // 이미 말머리가 있으면 제거 후 새로 설정
       let cleanTitle = vItem.title.replace(/^\[.*?\]\s*/, '');
       document.getElementById('inputTitle').value = prefixTag + cleanTitle;
       document.getElementById('inputPlatform').value = vItem.platform || '';
@@ -489,7 +509,6 @@
       }
     }
 
-    // 1번 기능: 날짜 클릭 시 일정 팝업창 띄우기
     function handleDateClick(dateStr) {
       selectedDateStr = dateStr;
       renderCalendar();
@@ -523,19 +542,31 @@
         listContainer.innerHTML = dayEvents.map(item => {
           const timeText = item.event_time ? item.event_time.slice(0, 5) : '';
           const companionText = item.parsed_companion ? `👥 ${item.parsed_companion}` : '';
+          const isPostDone = item.category === '원고마감' && item.is_post_completed;
+
           return `
-            <div onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" 
-                 class="p-3 bg-palette-cream-card rounded-xl border border-palette-border hover:border-palette-midnight transition cursor-pointer flex items-center justify-between shadow-sm">
-              <div class="space-y-1 flex-1 overflow-hidden pr-2">
+            <div class="p-3 bg-palette-cream-card rounded-xl border border-palette-border hover:border-palette-midnight transition flex items-center justify-between shadow-sm gap-2">
+              <div onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="space-y-1 flex-1 overflow-hidden cursor-pointer">
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="text-[9px] font-black px-1.5 py-0.5 rounded-md ${getBarColor(item)}">${item.category}</span>
                   ${item.platform ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-palette-sky-soft text-palette-midnight">🔗 ${item.platform}</span>` : ''}
                   ${companionText ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-palette-sage-soft text-palette-midnight">${companionText}</span>` : ''}
                   ${timeText ? `<span class="text-[10px] font-bold text-palette-muted">⏰ ${timeText}</span>` : ''}
                 </div>
-                <h4 class="font-black text-xs text-palette-midnight truncate">${item.title}</h4>
+                <h4 class="font-black text-xs text-palette-midnight truncate ${isPostDone ? 'line-through text-palette-muted' : ''}">
+                  ${item.title}
+                </h4>
               </div>
-              <span class="text-xs font-bold text-palette-muted shrink-0">✏️ 수정</span>
+
+              <!-- 원고마감일 경우 즉시 완료 토글 버튼 -->
+              <div class="flex items-center gap-1.5 shrink-0">
+                ${item.category === '원고마감' ? `
+                  <button onclick="togglePostComplete(${item.id}, ${item.is_post_completed}, event)" class="px-2 py-1 rounded-lg text-[10px] font-black transition ${isPostDone ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood border border-palette-rosewood/30'}">
+                    ${isPostDone ? '✓ 예약완료' : '✍️ 작성대기'}
+                  </button>
+                ` : ''}
+                <button onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="text-xs text-palette-muted hover:text-palette-midnight p-1">✏️</button>
+              </div>
             </div>
           `;
         }).join('');
@@ -555,6 +586,7 @@
         document.getElementById('inputTitle').value = item.title || '';
         document.getElementById('inputPlatform').value = item.platform || '';
         document.getElementById('inputCompanion').value = item.parsed_companion || '';
+        document.getElementById('inputIsPostCompleted').checked = !!item.is_post_completed;
         
         selectedTypes = item.cleaned_types || cleanContentTypes(item.content_type);
         updateContentTypeUI();
@@ -574,6 +606,7 @@
         document.getElementById('inputTitle').value = '';
         document.getElementById('inputPlatform').value = '';
         document.getElementById('inputCompanion').value = '';
+        document.getElementById('inputIsPostCompleted').checked = false;
         
         selectedTypes = ['블로그 글'];
         updateContentTypeUI();
@@ -601,6 +634,7 @@
       const title = document.getElementById('inputTitle').value;
       const platform = document.getElementById('inputPlatform').value;
       const companion = document.getElementById('inputCompanion').value;
+      const is_post_completed = document.getElementById('inputIsPostCompleted').checked;
       const content_type = selectedTypes.join(', ');
       const topic_category = document.getElementById('inputTopic').value;
       const category = document.getElementById('inputCategory').value;
@@ -613,14 +647,11 @@
 
       if (!title || !event_date) return alert('제목과 날짜는 필수입니다.');
 
-      // 메타데이터(협찬금액 및 동행인)를 memo 안에 안전하게 임베딩
+      // 메타데이터(협찬금액, 동행인, 원고완료여부)를 memo 안에 안전하게 포함
       let finalMemo = rawMemo;
-      if (product_amount > 0) {
-        finalMemo = `[PROD_VAL:${product_amount}]\n` + finalMemo;
-      }
-      if (companion) {
-        finalMemo = `[WITH:${companion}]\n` + finalMemo;
-      }
+      if (product_amount > 0) finalMemo = `[PROD_VAL:${product_amount}]\n` + finalMemo;
+      if (companion) finalMemo = `[WITH:${companion}]\n` + finalMemo;
+      if (category === '원고마감' && is_post_completed) finalMemo = `[POST_DONE:1]\n` + finalMemo;
 
       const payload = { 
         title, 
@@ -647,6 +678,33 @@
         loadData();
       } catch (err) {
         alert('저장 중 오류가 발생했습니다: ' + (err.message || JSON.stringify(err)));
+      }
+    }
+
+    // 원고 작성/예약발행 완료 여부 원클릭 토글 함수
+    async function togglePostComplete(id, currentStatus, event) {
+      if (event) event.stopPropagation();
+      const item = scheduleList.find(s => s.id == id);
+      if (!item) return;
+
+      let memo = item.memo || '';
+      if (currentStatus) {
+        // 완료 -> 대기로 변경
+        memo = memo.replace(/\[POST_DONE:1\]\n?/, '');
+      } else {
+        // 대기 -> 완료로 변경
+        memo = `[POST_DONE:1]\n` + memo;
+      }
+
+      try {
+        const { error } = await supabaseClient.from('schedules').update({ memo: memo.trim() }).eq('id', id);
+        if (error) throw error;
+        await loadData();
+        if (!document.getElementById('dayDetailModal').classList.contains('hidden')) {
+          openDayDetailModal(item.event_date);
+        }
+      } catch (err) {
+        alert('원고 상태 변경 실패: ' + err.message);
       }
     }
 
@@ -777,8 +835,14 @@
       draggedItemId = null;
     }
 
+    // 캘린더 바 스타일 (원고마감 완료 시 차분한 회색+취소선 스타일 적용)
     function getBarColor(item) {
-      if (item.category === '원고마감') return 'bg-palette-blush text-palette-rosewood font-extrabold';
+      if (item.category === '원고마감') {
+        if (item.is_post_completed) {
+          return 'bg-[#EBE7DF] text-palette-muted line-through opacity-75 font-bold';
+        }
+        return 'bg-palette-blush text-palette-rosewood font-extrabold shadow-sm';
+      }
       if (item.category === '방문일') return 'bg-palette-sage-soft text-palette-midnight font-bold border border-palette-sage/40';
       if (item.category === '정산일') return 'bg-palette-sky-soft text-palette-midnight font-bold border border-palette-sky/40';
       return 'bg-palette-cream text-palette-midnight font-bold';
@@ -838,6 +902,8 @@
             <div class="space-y-0.5 mt-1 overflow-hidden w-full">
               ${dayEvents.slice(0, 3).map(ev => {
                 const timeText = ev.event_time ? ev.event_time.slice(0, 5) : '';
+                const isPostDone = ev.category === '원고마감' && ev.is_post_completed;
+
                 return `
                   <div 
                     draggable="true"
@@ -848,7 +914,8 @@
                     ontouchend="handleTouchEnd(event)"
                     onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" 
                     class="cursor-grab active:cursor-grabbing text-[8px] sm:text-[10px] px-1 py-0.5 rounded-[4px] truncate leading-tight transition-transform flex items-center gap-1 ${getBarColor(ev)}"
-                    title="드래그로 이동, 클릭 시 수정">
+                    title="${isPostDone ? '작성 및 예약발행 완료' : '미완료 원고'}">
+                    ${isPostDone ? '<span class="text-[8px]">✓</span>' : ''}
                     ${timeText ? `<span class="opacity-75 font-semibold shrink-0 text-[7px] sm:text-[9px]">${timeText}</span>` : ''}
                     <span class="truncate">${ev.title}</span>
                   </div>
@@ -924,6 +991,7 @@
         const types = item.cleaned_types || [];
         const timeDisplay = item.event_time ? item.event_time.slice(0, 5) : '';
         const companionText = item.parsed_companion ? `👥 ${item.parsed_companion}` : '';
+        const isPostDone = item.category === '원고마감' && item.is_post_completed;
 
         return `
           <div onclick="openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="bg-palette-cream-card p-3 rounded-xl border border-palette-border hover:border-palette-midnight/40 transition cursor-pointer flex items-center justify-between gap-2 shadow-sm">
@@ -935,7 +1003,9 @@
                 ${types.map(t => `<span class="text-[9px] font-bold text-palette-midnight bg-palette-blush-soft border border-palette-blush/60 px-1.5 py-0.5 rounded-md">${t}</span>`).join('')}
                 <span class="text-[10px] font-bold text-palette-muted">${item.event_date}${timeDisplay ? ` ${timeDisplay}` : ''}</span>
               </div>
-              <h4 class="font-black text-xs sm:text-sm text-palette-midnight truncate">${item.title}</h4>
+              <h4 class="font-black text-xs sm:text-sm text-palette-midnight truncate ${isPostDone ? 'line-through text-palette-muted' : ''}">
+                ${isPostDone ? '✓ ' : ''}${item.title}
+              </h4>
               ${item.display_memo ? `<p class="text-[10px] text-palette-muted truncate whitespace-pre-line">${item.display_memo}</p>` : ''}
             </div>
 
@@ -945,11 +1015,18 @@
                 ${cashAmt > 0 ? `<div class="text-xs font-black text-palette-midnight">💵 ${cashAmt.toLocaleString()}원</div>` : ''}
                 ${prodAmt === 0 && cashAmt === 0 ? `<div class="text-xs font-bold text-palette-muted">0원</div>` : ''}
               </div>
-              ${cashAmt > 0 ? `
-                <button onclick="togglePaidStatus(${item.id}, ${isPaid}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black ${isPaid ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood'}">
-                  ${isPaid ? '입금완료' : '입금대기'}
-                </button>
-              ` : ''}
+              <div class="flex items-center gap-1">
+                ${item.category === '원고마감' ? `
+                  <button onclick="togglePostComplete(${item.id}, ${item.is_post_completed}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black transition ${isPostDone ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood border border-palette-rosewood/30'}">
+                    ${isPostDone ? '예약완료' : '작성대기'}
+                  </button>
+                ` : ''}
+                ${cashAmt > 0 ? `
+                  <button onclick="togglePaidStatus(${item.id}, ${isPaid}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black ${isPaid ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood'}">
+                    ${isPaid ? '입금완료' : '입금대기'}
+                  </button>
+                ` : ''}
+              </div>
             </div>
           </div>
         `;
