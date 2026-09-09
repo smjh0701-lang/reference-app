@@ -135,7 +135,7 @@
       <div class="flex justify-between items-center pb-2 border-b border-palette-border">
         <div>
           <h3 id="dayDetailModalTitle" class="text-sm sm:text-base font-black text-palette-midnight"></h3>
-          <p class="text-[11px] text-palette-muted font-semibold">완료한 콘텐츠를 눌러 실시간 체크하세요.</p>
+          <p class="text-[11px] text-palette-muted font-semibold">완료할 콘텐츠를 누르면 바로 체크/해제됩니다.</p>
         </div>
         <button onclick="closeDayDetailModal()" class="w-7 h-7 rounded-full bg-white border border-palette-border text-palette-muted hover:text-palette-midnight flex items-center justify-center text-base font-bold">&times;</button>
       </div>
@@ -181,15 +181,6 @@
               <option value="기타">💡 기타</option>
             </select>
           </div>
-        </div>
-
-        <!-- 원고 작성 전체 완료 체크박스 -->
-        <div id="postCompleteContainer" class="hidden p-2.5 bg-palette-sage-soft/80 border border-palette-sage/60 rounded-xl flex items-center justify-between">
-          <div>
-            <span class="font-bold text-palette-midnight block">✍️ 원고 작성 및 예약발행 전체 완료</span>
-            <span class="text-[10px] text-palette-muted">체크 시 모든 항목이 완료 처리됩니다.</span>
-          </div>
-          <input type="checkbox" id="inputIsPostCompleted" class="w-5 h-5 rounded text-palette-sage accent-palette-sage cursor-pointer">
         </div>
 
         <!-- 방문일 일정 불러오기 탭 -->
@@ -339,20 +330,6 @@
     let touchGhost = null;
     let currentDropTarget = null;
 
-    // 태그를 캘린더용 단축 명칭으로 변환하는 함수
-    function getShortTagName(tag) {
-      if (tag.includes('블로그') && tag.includes('클립')) return '클립';
-      if (tag.includes('블로그')) return '글';
-      if (tag.includes('인스타') && tag.includes('릴스')) return '릴스';
-      if (tag.includes('인스타')) return '피드';
-      if (tag.includes('네이버')) return 'N리뷰';
-      if (tag.includes('구글')) return 'G리뷰';
-      if (tag.includes('티맵')) return 'T리뷰';
-      if (tag.includes('유튜브') || tag.includes('쇼츠')) return '영상';
-      if (tag.includes('내돈내산')) return '내돈';
-      return tag.slice(0, 3);
-    }
-
     function cleanContentTypes(rawTypeStr) {
       if (!rawTypeStr) return [];
       const parts = rawTypeStr.split(',').map(s => s.trim()).filter(Boolean);
@@ -374,10 +351,10 @@
       return Array.from(resultSet);
     }
 
+    // 메모 파싱 (기존 잔여 태그 충돌 방지 및 정확한 완료 목록 추출)
     function parseItemData(item) {
       let product_amount = Number(item.product_amount) || 0;
       let companion = item.companion || '';
-      let is_post_completed = false;
       let cleanMemo = item.memo || '';
       let doneTags = [];
 
@@ -397,35 +374,27 @@
         }
       }
 
-      if (cleanMemo.includes('[POST_DONE:1]')) {
-        is_post_completed = true;
-        cleanMemo = cleanMemo.replace(/\[POST_DONE:1\]\n?/, '');
-      }
-
-      if (cleanMemo.includes('[DONE_TAGS:')) {
-        const match = cleanMemo.match(/\[DONE_TAGS:(.*?)\]/);
-        if (match) {
-          doneTags = match[1].split(',').map(s => s.trim()).filter(Boolean);
-          cleanMemo = cleanMemo.replace(/\[DONE_TAGS:.*?\]\n?/, '');
-        }
-      }
-
       const cleanedTypes = cleanContentTypes(item.content_type);
 
-      // 전체 완료 플래그가 있으면 모든 태그를 완료 상태로 연동
-      if (is_post_completed && cleanedTypes.length > 0) {
+      // 개별 완료 태그 파싱
+      if (cleanMemo.includes('[DONE_TAGS:')) {
+        const match = cleanMemo.match(/\[DONE_TAGS:(.*?)\]/);
+        if (match && match[1]) {
+          doneTags = match[1].split(',').map(s => s.trim()).filter(t => cleanedTypes.includes(t));
+        }
+        cleanMemo = cleanMemo.replace(/\[DONE_TAGS:.*?\]\n?/, '');
+      } else if (cleanMemo.includes('[POST_DONE:1]')) {
+        // 기존 전체 완료 플래그 호환
         doneTags = [...cleanedTypes];
-      } else if (cleanedTypes.length > 0 && cleanedTypes.every(t => doneTags.includes(t))) {
-        is_post_completed = true;
+        cleanMemo = cleanMemo.replace(/\[POST_DONE:1\]\n?/, '');
       }
 
       return { 
         ...item, 
         parsed_product_amount: product_amount, 
         parsed_companion: companion,
-        is_post_completed: is_post_completed,
         done_tags: doneTags,
-        display_memo: cleanMemo,
+        display_memo: cleanMemo.trim(),
         cleaned_types: cleanedTypes
       };
     }
@@ -468,11 +437,9 @@
     function onCategoryChange() {
       const cat = document.getElementById('inputCategory').value;
       const importContainer = document.getElementById('importVisitContainer');
-      const postDoneContainer = document.getElementById('postCompleteContainer');
       const select = document.getElementById('visitScheduleSelect');
 
-      if (cat === '원고마감') {
-        postDoneContainer.classList.remove('hidden');
+      if (cat === '원고마감' || cat === '정산일') {
         importContainer.classList.remove('hidden');
         
         const visits = scheduleList
@@ -481,18 +448,7 @@
 
         select.innerHTML = '<option value="">불러올 방문일 일정을 선택하세요</option>' + 
           visits.map(v => `<option value="${v.id}">[${v.event_date}] ${v.title} (${v.platform || '개별'})</option>`).join('');
-      } else if (cat === '정산일') {
-        postDoneContainer.classList.add('hidden');
-        importContainer.classList.remove('hidden');
-
-        const visits = scheduleList
-          .filter(s => s.category === '방문일')
-          .sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
-
-        select.innerHTML = '<option value="">불러올 방문일 일정을 선택하세요</option>' + 
-          visits.map(v => `<option value="${v.id}">[${v.event_date}] ${v.title} (${v.platform || '개별'})</option>`).join('');
       } else {
-        postDoneContainer.classList.add('hidden');
         importContainer.classList.add('hidden');
       }
     }
@@ -557,6 +513,7 @@
       openDayDetailModal(dateStr);
     }
 
+    // 날짜별 일정 팝업: 개별 콘텐츠 형태별 원클릭 토글 (체크/해제 완벽 대응)
     function openDayDetailModal(dateStr) {
       const modal = document.getElementById('dayDetailModal');
       const titleElem = document.getElementById('dayDetailModalTitle');
@@ -585,7 +542,7 @@
           const companionText = item.parsed_companion ? `👥 ${item.parsed_companion}` : '';
           const totalTags = item.cleaned_types || [];
           const doneTags = item.done_tags || [];
-          const isAllDone = item.is_post_completed;
+          const isAllDone = totalTags.length > 0 && doneTags.length >= totalTags.length;
 
           return `
             <div class="p-3 bg-palette-cream-card rounded-xl border border-palette-border hover:border-palette-midnight transition flex flex-col gap-2 shadow-sm">
@@ -601,26 +558,18 @@
                     ${isAllDone ? '✓ ' : ''}${item.title}
                   </h4>
                 </div>
-
-                <div class="flex items-center gap-1.5 shrink-0">
-                  ${item.category === '원고마감' ? `
-                    <button onclick="toggleAllPostComplete(${item.id}, ${isAllDone}, event)" class="px-2 py-1 rounded-lg text-[10px] font-black transition ${isAllDone ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood border border-palette-rosewood/30'}">
-                      ${isAllDone ? '✓ 예약완료' : '✍️ 전체완료'}
-                    </button>
-                  ` : ''}
-                  <button onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="text-xs text-palette-muted hover:text-palette-midnight p-1">✏️</button>
-                </div>
+                <button onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="text-xs text-palette-muted hover:text-palette-midnight shrink-0 p-1">✏️ 수정</button>
               </div>
 
-              <!-- 개별 콘텐츠별 체크 버튼들 -->
+              <!-- 개별 콘텐츠별 원클릭 완료 토글 버튼들 -->
               ${item.category === '원고마감' && totalTags.length > 0 ? `
                 <div class="pt-1.5 border-t border-palette-border/60 flex items-center gap-1.5 flex-wrap">
-                  <span class="text-[10px] font-bold text-palette-muted">개별 완료 체크:</span>
+                  <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>
                   ${totalTags.map(tag => {
                     const isChecked = doneTags.includes(tag);
                     return `
                       <button type="button" onclick="toggleTagComplete(${item.id}, '${tag}', event)" 
-                              class="px-2 py-0.5 rounded-lg text-[10px] font-black transition flex items-center gap-1 ${isChecked ? 'bg-palette-sage text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
+                              class="px-2 py-0.5 rounded-lg text-[10px] font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${isChecked ? 'bg-palette-sage text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
                         <span>${isChecked ? '✓' : '○'}</span>
                         <span>${tag}</span>
                       </button>
@@ -647,7 +596,6 @@
         document.getElementById('inputTitle').value = item.title || '';
         document.getElementById('inputPlatform').value = item.platform || '';
         document.getElementById('inputCompanion').value = item.parsed_companion || '';
-        document.getElementById('inputIsPostCompleted').checked = !!item.is_post_completed;
         
         selectedTypes = item.cleaned_types || cleanContentTypes(item.content_type);
         updateContentTypeUI();
@@ -667,7 +615,6 @@
         document.getElementById('inputTitle').value = '';
         document.getElementById('inputPlatform').value = '';
         document.getElementById('inputCompanion').value = '';
-        document.getElementById('inputIsPostCompleted').checked = false;
         
         selectedTypes = ['블로그 글'];
         updateContentTypeUI();
@@ -695,7 +642,6 @@
       const title = document.getElementById('inputTitle').value;
       const platform = document.getElementById('inputPlatform').value;
       const companion = document.getElementById('inputCompanion').value;
-      const is_post_completed = document.getElementById('inputIsPostCompleted').checked;
       const content_type = selectedTypes.join(', ');
       const topic_category = document.getElementById('inputTopic').value;
       const category = document.getElementById('inputCategory').value;
@@ -709,9 +655,7 @@
       if (!title || !event_date) return alert('제목과 날짜는 필수입니다.');
 
       let finalDoneTags = [];
-      if (is_post_completed) {
-        finalDoneTags = [...selectedTypes];
-      } else if (editingId) {
+      if (editingId) {
         const prev = scheduleList.find(s => s.id == editingId);
         if (prev) {
           finalDoneTags = (prev.done_tags || []).filter(t => selectedTypes.includes(t));
@@ -721,12 +665,8 @@
       let finalMemo = rawMemo;
       if (product_amount > 0) finalMemo = `[PROD_VAL:${product_amount}]\n` + finalMemo;
       if (companion) finalMemo = `[WITH:${companion}]\n` + finalMemo;
-      if (category === '원고마감') {
-        if (is_post_completed || (selectedTypes.length > 0 && finalDoneTags.length >= selectedTypes.length)) {
-          finalMemo = `[POST_DONE:1]\n` + finalMemo;
-        } else if (finalDoneTags.length > 0) {
-          finalMemo = `[DONE_TAGS:${finalDoneTags.join(',')}]\n` + finalMemo;
-        }
+      if (category === '원고마감' && finalDoneTags.length > 0) {
+        finalMemo = `[DONE_TAGS:${finalDoneTags.join(',')}]\n` + finalMemo;
       }
 
       const payload = { 
@@ -757,67 +697,47 @@
       }
     }
 
-    // 전체 완료/작성대기 토글
-    async function toggleAllPostComplete(id, currentStatus, event) {
-      if (event) event.stopPropagation();
-      const item = scheduleList.find(s => s.id == id);
-      if (!item) return;
-
-      let memo = item.memo || '';
-      memo = memo.replace(/\[POST_DONE:1\]\n?/, '');
-      memo = memo.replace(/\[DONE_TAGS:.*?\]\n?/, '');
-
-      if (!currentStatus) {
-        memo = `[POST_DONE:1]\n` + memo;
-      }
-
-      try {
-        const { error } = await supabaseClient.from('schedules').update({ memo: memo.trim() }).eq('id', id);
-        if (error) throw error;
-        await loadData();
-        if (!document.getElementById('dayDetailModal').classList.contains('hidden')) {
-          openDayDetailModal(item.event_date);
-        }
-      } catch (err) {
-        alert('원고 완료 상태 변경 실패: ' + err.message);
-      }
-    }
-
-    // 개별 태그 완료 토글
+    // 💡 개별 태그 완료 토글 (체크 / 해제 확실하게 처리)
     async function toggleTagComplete(id, tag, event) {
       if (event) event.stopPropagation();
       const item = scheduleList.find(s => s.id == id);
       if (!item) return;
 
-      const totalTags = item.cleaned_types || [];
       let currentDoneTags = [...(item.done_tags || [])];
-
       const idx = currentDoneTags.indexOf(tag);
+
+      // 이미 체크되어 있으면 제거(해제), 없으면 추가
       if (idx > -1) {
         currentDoneTags.splice(idx, 1);
       } else {
         currentDoneTags.push(tag);
       }
 
-      let memo = item.memo || '';
-      memo = memo.replace(/\[DONE_TAGS:.*?\]\n?/, '');
-      memo = memo.replace(/\[POST_DONE:1\]\n?/, '');
+      // UI 즉시 반영 (즉각적인 피드백)
+      item.done_tags = currentDoneTags;
+      renderCalendar();
+      renderDetailList();
+      if (!document.getElementById('dayDetailModal').classList.contains('hidden')) {
+        openDayDetailModal(item.event_date);
+      }
 
-      if (totalTags.length > 0 && currentDoneTags.length >= totalTags.length) {
-        memo = `[POST_DONE:1]\n` + memo;
-      } else if (currentDoneTags.length > 0) {
-        memo = `[DONE_TAGS:${currentDoneTags.join(',')}]\n` + memo;
+      // DB 저장용 memo 생성 (과거 태그 완전히 제거 후 새 태그만 삽입)
+      let cleanMemo = (item.memo || '')
+        .replace(/\[DONE_TAGS:.*?\]\n?/g, '')
+        .replace(/\[POST_DONE:1\]\n?/g, '');
+
+      let updatedMemo = cleanMemo.trim();
+      if (currentDoneTags.length > 0) {
+        updatedMemo = `[DONE_TAGS:${currentDoneTags.join(',')}]\n` + updatedMemo;
       }
 
       try {
-        const { error } = await supabaseClient.from('schedules').update({ memo: memo.trim() }).eq('id', id);
+        const { error } = await supabaseClient.from('schedules').update({ memo: updatedMemo.trim() }).eq('id', id);
         if (error) throw error;
-        await loadData();
-        if (!document.getElementById('dayDetailModal').classList.contains('hidden')) {
-          openDayDetailModal(item.event_date);
-        }
+        item.memo = updatedMemo.trim();
       } catch (err) {
-        alert('완료 상태 변경 실패: ' + err.message);
+        alert('상태 변경 실패: ' + err.message);
+        loadData();
       }
     }
 
@@ -948,20 +868,21 @@
       draggedItemId = null;
     }
 
-    // 캘린더 바 배경 색상
+    // 캘린더 바 색상
     function getBarColor(item) {
       if (item.category === '원고마감') {
-        const isAllDone = item.is_post_completed;
+        const totalCount = (item.cleaned_types || []).length;
         const doneCount = (item.done_tags || []).length;
+        const isAllDone = totalCount > 0 && doneCount >= totalCount;
 
         if (isAllDone) {
           return 'bg-[#EBE7DF] text-palette-muted line-through opacity-75 font-bold';
         }
         if (doneCount > 0) {
-          // 글 등 일부만 완료된 경우: 부드러운 올리브/세이지색으로 눈에 띄게
+          // 일부 완료: 부드러운 올리브색으로 진행 중 표시
           return 'bg-[#EAF0E2] text-[#3E4F28] border border-[#B8CCA2] font-black';
         }
-        // 하나도 안 끝난 원고
+        // 미완료
         return 'bg-palette-blush text-palette-rosewood font-extrabold shadow-sm';
       }
       if (item.category === '방문일') return 'bg-palette-sage-soft text-palette-midnight font-bold border border-palette-sage/40';
@@ -1023,30 +944,17 @@
             <div class="space-y-0.5 mt-1 overflow-hidden w-full">
               ${dayEvents.slice(0, 3).map(ev => {
                 const timeText = ev.event_time ? ev.event_time.slice(0, 5) : '';
-                const totalTags = ev.cleaned_types || [];
-                const doneTags = ev.done_tags || [];
-                const isAllDone = ev.is_post_completed;
+                const totalCount = (ev.cleaned_types || []).length;
+                const doneCount = (ev.done_tags || []).length;
+                const isAllDone = totalCount > 0 && doneCount >= totalCount;
 
-                // 💡 캘린더 바 우측: 완료/미완료 개별 뱃지 생성
-                let tagBadgesHtml = '';
-                if (ev.category === '원고마감' && totalTags.length > 0) {
+                // 💡 깔끔한 숫자 카운터 뱃지 (1/3, 2/3) or 완료 시 (✓)
+                let badgeHtml = '';
+                if (ev.category === '원고마감') {
                   if (isAllDone) {
-                    tagBadgesHtml = `<span class="text-[8px] font-black opacity-80 shrink-0">✓</span>`;
-                  } else {
-                    // 여러 태그 중 완료된 것(초록)과 아직 안 된 것(핑크/미완료)을 콤팩트하게 표시
-                    tagBadgesHtml = `
-                      <div class="flex items-center gap-0.5 shrink-0">
-                        ${totalTags.map(t => {
-                          const isDone = doneTags.includes(t);
-                          const shortName = getShortTagName(t);
-                          if (isDone) {
-                            return `<span class="text-[7px] px-1 py-0.2 rounded font-black bg-[#6B8E23] text-white leading-none">✓${shortName}</span>`;
-                          } else {
-                            return `<span class="text-[7px] px-1 py-0.2 rounded font-bold bg-black/15 text-palette-midnight leading-none opacity-80">${shortName}</span>`;
-                          }
-                        }).join('')}
-                      </div>
-                    `;
+                    badgeHtml = `<span class="text-[8px] font-black opacity-90 shrink-0">✓</span>`;
+                  } else if (totalCount > 0) {
+                    badgeHtml = `<span class="text-[8px] font-black px-1 rounded ${doneCount > 0 ? 'bg-black/15 text-[#2E3C1D]' : 'bg-black/10 text-palette-rosewood'} shrink-0">${doneCount}/${totalCount}</span>`;
                   }
                 }
 
@@ -1060,13 +968,13 @@
                     ontouchend="handleTouchEnd(event)"
                     onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" 
                     class="cursor-grab active:cursor-grabbing text-[8px] sm:text-[10px] px-1 py-0.5 rounded-[4px] leading-tight transition-transform flex items-center justify-between gap-1 ${getBarColor(ev)}"
-                    title="${isAllDone ? '모든 콘텐츠 완료' : `완료: ${doneTags.join(', ') || '없음'}`}">
+                    title="진행: ${doneCount}/${totalCount}">
                     <div class="flex items-center gap-1 truncate">
                       ${isAllDone ? '<span class="text-[8px] font-black shrink-0">✓</span>' : ''}
                       ${timeText ? `<span class="opacity-75 font-semibold shrink-0 text-[7px] sm:text-[9px]">${timeText}</span>` : ''}
                       <span class="truncate ${isAllDone ? 'line-through opacity-80' : ''}">${ev.title}</span>
                     </div>
-                    ${tagBadgesHtml}
+                    ${badgeHtml}
                   </div>
                 `;
               }).join('')}
@@ -1139,7 +1047,7 @@
         const prodAmt = Number(item.parsed_product_amount) || 0;
         const totalTags = item.cleaned_types || [];
         const doneTags = item.done_tags || [];
-        const isAllDone = item.is_post_completed;
+        const isAllDone = totalTags.length > 0 && doneTags.length >= totalTags.length;
         const timeDisplay = item.event_time ? item.event_time.slice(0, 5) : '';
         const companionText = item.parsed_companion ? `👥 ${item.parsed_companion}` : '';
 
@@ -1165,30 +1073,23 @@
                   ${cashAmt > 0 ? `<div class="text-xs font-black text-palette-midnight">💵 ${cashAmt.toLocaleString()}원</div>` : ''}
                   ${prodAmt === 0 && cashAmt === 0 ? `<div class="text-xs font-bold text-palette-muted">0원</div>` : ''}
                 </div>
-                <div class="flex items-center gap-1">
-                  ${item.category === '원고마감' ? `
-                    <button onclick="toggleAllPostComplete(${item.id}, ${isAllDone}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black transition ${isAllDone ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood border border-palette-rosewood/30'}">
-                      ${isAllDone ? '✓ 예약완료' : '✍️ 전체완료'}
-                    </button>
-                  ` : ''}
-                  ${cashAmt > 0 ? `
-                    <button onclick="togglePaidStatus(${item.id}, ${isPaid}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black ${isPaid ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood'}">
-                      ${isPaid ? '입금완료' : '입금대기'}
-                    </button>
-                  ` : ''}
-                </div>
+                ${cashAmt > 0 ? `
+                  <button onclick="togglePaidStatus(${item.id}, ${isPaid}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black ${isPaid ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood'}">
+                    ${isPaid ? '입금완료' : '입금대기'}
+                  </button>
+                ` : ''}
               </div>
             </div>
 
-            <!-- 개별 콘텐츠별 체크 버튼들 -->
+            <!-- 개별 완료 체크/해제 버튼들 -->
             ${item.category === '원고마감' && totalTags.length > 0 ? `
               <div class="pt-1.5 border-t border-palette-border/50 flex items-center gap-1.5 flex-wrap">
-                <span class="text-[10px] font-bold text-palette-muted">개별 완료 체크:</span>
+                <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>
                 ${totalTags.map(tag => {
                   const isChecked = doneTags.includes(tag);
                   return `
                     <button type="button" onclick="toggleTagComplete(${item.id}, '${tag}', event)" 
-                            class="px-2 py-0.5 rounded-md text-[9px] font-black transition flex items-center gap-1 ${isChecked ? 'bg-palette-sage text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
+                            class="px-2 py-0.5 rounded-md text-[9px] font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${isChecked ? 'bg-palette-sage text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
                       <span>${isChecked ? '✓' : '○'}</span>
                       <span>${tag}</span>
                     </button>
