@@ -53,7 +53,6 @@
       border-style: dashed !important;
     }
 
-    /* 완료된 스티커 스타일 */
     .sticker-done {
       opacity: 0.58;
       background-color: #f1efe9;
@@ -76,7 +75,6 @@
       </h1>
     </div>
 
-    <!-- 우측 액션 버튼들 -->
     <div class="flex items-center gap-2">
       <button onclick="openPillarModal()" class="px-3.5 py-1.5 rounded-full bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 text-xs font-bold transition hover:shadow-xs">
         ⚙️ 기둥 관리
@@ -211,6 +209,10 @@
 
     const DEFAULT_PILLARS = ['자유 & 여행', '뷰티 & 착장', '퇴사자의 일상'];
     let pillarList = JSON.parse(localStorage.getItem('content_pillars')) || DEFAULT_PILLARS;
+    
+    // 💾 기둥 매핑 로컬 캐시 (DB 컬럼 유실 방지용)
+    let pillarCache = JSON.parse(localStorage.getItem('sticker_pillar_cache')) || {};
+    
     let cachedData = [];
     let editingId = null;
     let draggedItemId = null;
@@ -219,6 +221,10 @@
       localStorage.setItem('content_pillars', JSON.stringify(pillarList));
       populatePillarSelects();
       renderBoard();
+    }
+
+    function savePillarCache() {
+      localStorage.setItem('sticker_pillar_cache', JSON.stringify(pillarCache));
     }
 
     function populatePillarSelects() {
@@ -257,14 +263,22 @@
       input.value = '';
     }
     function editPillarName(idx) {
-      const newName = prompt('기둥 이름 수정:', pillarList[idx]);
-      if (!newName || !newName.trim()) return;
+      const oldName = pillarList[idx];
+      const newName = prompt('기둥 이름 수정:', oldName);
+      if (!newName || !newName.trim() || newName.trim() === oldName) return;
+
       pillarList[idx] = newName.trim();
+      // 캐시된 기둥 이름도 업데이트
+      Object.keys(pillarCache).forEach(k => {
+        if (pillarCache[k] === oldName) pillarCache[k] = newName.trim();
+      });
+      savePillarCache();
       savePillarsToStorage();
       renderPillarManageList();
     }
     function deletePillar(idx) {
-      if (!confirm(`'${pillarList[idx]}' 기둥을 삭제하시겠습니까?`)) return;
+      const target = pillarList[idx];
+      if (!confirm(`'${target}' 기둥을 삭제하시겠습니까?`)) return;
       pillarList.splice(idx, 1);
       savePillarsToStorage();
       renderPillarManageList();
@@ -304,15 +318,23 @@
         platform: '릴스/숏폼'
       }));
 
-      let { error } = await supabaseClient.from('content_plans').insert(payload);
-      if (error && error.message.includes('pillar')) {
+      let res = await supabaseClient.from('content_plans').insert(payload).select();
+      if (res.error && res.error.message.includes('pillar')) {
         const fallback = cleanItems.map(title => ({
           title: title,
           memo_type: 'plan',
           status: '아이디어',
           platform: '릴스/숏폼'
         }));
-        await supabaseClient.from('content_plans').insert(fallback);
+        res = await supabaseClient.from('content_plans').insert(fallback).select();
+      }
+
+      // 로컬 기둥 캐시 저장
+      if (res.data) {
+        res.data.forEach(item => {
+          pillarCache[item.id] = targetPillar;
+        });
+        savePillarCache();
       }
 
       closeBulkModal();
@@ -325,7 +347,7 @@
         editingId = item.id;
         document.getElementById('modalTitle').innerText = '✏️ 스티커 수정';
         document.getElementById('inputTitle').value = item.title || '';
-        document.getElementById('inputPillar').value = item.pillar || pillarList[0];
+        document.getElementById('inputPillar').value = item.pillar || defaultPillar || pillarList[0];
         document.getElementById('inputStatus').value = item.status || '아이디어';
         document.getElementById('inputPlatform').value = item.platform || '릴스/숏폼';
         document.getElementById('inputGuideText').value = item.guide_text || '';
@@ -356,16 +378,23 @@
       const payload = { title, pillar, status, platform, guide_text, memo_type: 'plan' };
 
       if (editingId) {
+        pillarCache[editingId] = pillar;
+        savePillarCache();
+
         let res = await supabaseClient.from('content_plans').update(payload).eq('id', editingId);
         if (res.error && res.error.message.includes('pillar')) {
           delete payload.pillar;
           await supabaseClient.from('content_plans').update(payload).eq('id', editingId);
         }
       } else {
-        let res = await supabaseClient.from('content_plans').insert([payload]);
+        let res = await supabaseClient.from('content_plans').insert([payload]).select();
         if (res.error && res.error.message.includes('pillar')) {
           delete payload.pillar;
-          await supabaseClient.from('content_plans').insert([payload]);
+          res = await supabaseClient.from('content_plans').insert([payload]).select();
+        }
+        if (res.data && res.data[0]) {
+          pillarCache[res.data[0].id] = pillar;
+          savePillarCache();
         }
       }
 
@@ -373,14 +402,25 @@
       loadData();
     }
 
+    // 🗑️ 삭제 즉시 화면에서 제거 및 DB 삭제
     async function deleteSticker(id, event) {
       if (event) event.stopPropagation();
       if (!confirm('이 스티커를 뗄까요?')) return;
-      await supabaseClient.from('content_plans').delete().eq('id', id);
-      loadData();
+
+      // 1. 화면 즉시 삭제 (낙관적 UI)
+      cachedData = cachedData.filter(i => String(i.id) !== String(id));
+      delete pillarCache[id];
+      savePillarCache();
+      renderBoard();
+
+      // 2. DB 삭제 실행
+      const { error } = await supabaseClient.from('content_plans').delete().eq('id', id);
+      if (error) {
+        alert('삭제 실패: ' + error.message);
+        loadData();
+      }
     }
 
-    // ⚡ 원클릭 문장 복사
     function copyTitle(title, event) {
       if (event) event.stopPropagation();
       navigator.clipboard.writeText(title).then(() => {
@@ -388,19 +428,19 @@
       });
     }
 
-    // ⚡ 원클릭 완료 토글
     async function toggleDone(id, currentStatus, event) {
       if (event) event.stopPropagation();
       const nextStatus = currentStatus === '발행완료' ? '아이디어' : '발행완료';
       
       const item = cachedData.find(i => String(i.id) === String(id));
-      if (item) item.status = nextStatus;
-      renderBoard();
+      if (item) {
+        item.status = nextStatus;
+        renderBoard();
+      }
 
       await supabaseClient.from('content_plans').update({ status: nextStatus }).eq('id', id);
     }
 
-    // 🎨 플랫폼 틴트 바 색상 추출
     function getPlatformTint(platform) {
       switch (platform) {
         case '블로그':
@@ -416,7 +456,7 @@
     function handleDragStart(e, id) {
       draggedItemId = id;
       e.target.classList.add('dragging');
-      e.dataTransfer.setData('text/plain', id);
+      e.dataTransfer.setData('text/plain', String(id));
       e.dataTransfer.effectAllowed = 'move';
     }
 
@@ -445,12 +485,19 @@
       if (!draggedItemId) return;
 
       const item = cachedData.find(i => String(i.id) === String(draggedItemId));
-      if (!item || item.pillar === targetPillar) return;
+      if (!item) return;
 
+      // 화면 즉시 이동 및 로컬 캐시 저장
       item.pillar = targetPillar;
+      pillarCache[item.id] = targetPillar;
+      savePillarCache();
       renderBoard();
 
-      await supabaseClient.from('content_plans').update({ pillar: targetPillar }).eq('id', draggedItemId);
+      // DB 업데이트
+      const { error } = await supabaseClient.from('content_plans').update({ pillar: targetPillar }).eq('id', draggedItemId);
+      if (error && !error.message.includes('pillar')) {
+        console.error('DB 기둥 업데이트 오류:', error);
+      }
     }
 
     // 🎨 보드 렌더링
@@ -459,7 +506,10 @@
       container.innerHTML = '';
 
       pillarList.forEach(pillar => {
-        const pillarItems = cachedData.filter(i => (i.pillar || pillarList[0]) === pillar);
+        const pillarItems = cachedData.filter(i => {
+          const itemPillar = i.pillar || pillarCache[i.id] || pillarList[0];
+          return itemPillar === pillar;
+        });
 
         const colHtml = `
           <div class="drop-zone flex flex-col bg-[#eceae4]/70 rounded-3xl p-4 border border-[#e2dfd7] transition min-h-[520px]"
@@ -492,10 +542,9 @@
                   <div draggable="true" 
                        ondragstart="handleDragStart(event, ${item.id})" 
                        ondragend="handleDragEnd(event)"
-                       onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})' 
+                       onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")}, "${pillar}")' 
                        class="sticker-card ${isDone ? 'sticker-done' : ''} p-3.5 sm:p-4 rounded-2xl relative group flex flex-col justify-between gap-2.5 overflow-hidden">
                     
-                    <!-- 상단 컬러 틴트 형광펜 바 -->
                     <div class="absolute top-0 left-0 right-0 h-1 ${tint.bg}"></div>
 
                     <div class="flex items-center justify-between pt-0.5">
@@ -537,6 +586,17 @@
     async function loadData() {
       const { data } = await supabaseClient.from('content_plans').select('*');
       cachedData = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      // DB에서 가져온 데이터에 로컬 기둥 캐시 매핑
+      cachedData.forEach(item => {
+        if (!item.pillar && pillarCache[item.id]) {
+          item.pillar = pillarCache[item.id];
+        } else if (item.pillar) {
+          pillarCache[item.id] = item.pillar;
+        }
+      });
+      savePillarCache();
+
       renderBoard();
     }
 
