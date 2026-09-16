@@ -10,6 +10,7 @@
   <style>
     :root {
       --fiery-red: #c82823;
+      --fiery-red-dark: #ab1f1a;
       --floaty-blue: #a5b9d0;
       --floaty-blue-light: #edf3fa;
       --paper-cream: #faf9f7;
@@ -20,21 +21,46 @@
     body { 
       font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; 
       background-color: var(--desk-bg);
+      user-select: none;
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
-    /* 포스트잇 느낌의 감성 쉐도우 */
     .sticker-card {
       background-color: var(--paper-cream);
       border: 1px solid var(--paper-border);
-      box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.04), 0 1px 3px -1px rgba(0, 0, 0, 0.02);
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 2px 5px -1px rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, opacity 0.2s ease;
+      cursor: grab;
+    }
+    .sticker-card:active {
+      cursor: grabbing;
     }
     .sticker-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 16px -3px rgba(0, 0, 0, 0.06), 0 3px 6px -2px rgba(0, 0, 0, 0.03);
+      box-shadow: 0 8px 16px -3px rgba(0, 0, 0, 0.06);
       border-color: #d8d4cd;
+    }
+
+    .sticker-card.dragging {
+      opacity: 0.35;
+      transform: scale(0.96);
+    }
+
+    .drop-zone.drag-over {
+      background-color: #e4e2da !important;
+      border-color: #c82823 !important;
+      border-style: dashed !important;
+    }
+
+    /* 완료된 스티커 스타일 */
+    .sticker-done {
+      opacity: 0.58;
+      background-color: #f1efe9;
+    }
+    .sticker-done .sticker-title {
+      text-decoration: line-through;
+      color: #78716c;
     }
   </style>
 </head>
@@ -50,7 +76,7 @@
       </h1>
     </div>
 
-    <!-- 우측 가벼운 액션 버튼들 -->
+    <!-- 우측 액션 버튼들 -->
     <div class="flex items-center gap-2">
       <button onclick="openPillarModal()" class="px-3.5 py-1.5 rounded-full bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 text-xs font-bold transition hover:shadow-xs">
         ⚙️ 기둥 관리
@@ -66,9 +92,7 @@
 
   <!-- 🏛️ 메인 3열 기둥 스티커 보드 -->
   <main class="max-w-[1600px] mx-auto p-4 sm:p-8">
-    <div id="boardColumns" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-      <!-- 자바스크립트로 기둥 컬럼과 스티커 카드들이 생성됩니다 -->
-    </div>
+    <div id="boardColumns" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start"></div>
   </main>
 
   <!-- 📑 텍스트 일괄 분해 등록 모달 -->
@@ -137,11 +161,11 @@
             </select>
           </div>
           <div>
-            <label class="block font-bold mb-1 text-stone-600">플랫폼</label>
+            <label class="block font-bold mb-1 text-stone-600">플랫폼 / 형태</label>
             <select id="inputPlatform" class="w-full p-2 border border-stone-200 rounded-xl bg-[#fbfbfb] font-medium">
-              <option value="인스타그램">📸 인스타그램</option>
-              <option value="블로그">📝 블로그</option>
-              <option value="릴스/숏폼">🎬 숏폼</option>
+              <option value="릴스/숏폼">🎬 릴스/숏폼</option>
+              <option value="인스타그램">📸 인스타 피드</option>
+              <option value="블로그">📝 블로그 포스팅</option>
             </select>
           </div>
         </div>
@@ -185,11 +209,11 @@
     const SUPABASE_KEY = "sb_publishable_yVLqAIRv6aOk8O8wWmzUPg_BGlTVZwb";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // 🏛️ 기본 기둥 세팅
     const DEFAULT_PILLARS = ['자유 & 여행', '뷰티 & 착장', '퇴사자의 일상'];
     let pillarList = JSON.parse(localStorage.getItem('content_pillars')) || DEFAULT_PILLARS;
     let cachedData = [];
     let editingId = null;
+    let draggedItemId = null;
 
     function savePillarsToStorage() {
       localStorage.setItem('content_pillars', JSON.stringify(pillarList));
@@ -203,7 +227,6 @@
       selects.forEach(s => { if (s) s.innerHTML = opts; });
     }
 
-    // 🏛️ 기둥 관리 모달
     function openPillarModal() {
       renderPillarManageList();
       document.getElementById('newPillarInput').value = '';
@@ -247,7 +270,6 @@
       renderPillarManageList();
     }
 
-    // 📑 스티커 일괄 쪼개기 모달
     function openBulkModal() {
       populatePillarSelects();
       document.getElementById('bulkTextInput').value = '';
@@ -256,8 +278,6 @@
     function closeBulkModal() {
       document.getElementById('bulkModal').classList.add('hidden');
     }
-
-    // ⚡ 텍스트 자동 파싱 & 벌크 추가
     async function processBulkText() {
       const raw = document.getElementById('bulkTextInput').value;
       if (!raw.trim()) return alert('텍스트를 넣어주세요.');
@@ -281,17 +301,16 @@
         pillar: targetPillar,
         memo_type: 'plan',
         status: '아이디어',
-        platform: '인스타그램'
+        platform: '릴스/숏폼'
       }));
 
-      // pillar 컬럼 호환 등록
       let { error } = await supabaseClient.from('content_plans').insert(payload);
       if (error && error.message.includes('pillar')) {
         const fallback = cleanItems.map(title => ({
           title: title,
           memo_type: 'plan',
           status: '아이디어',
-          platform: '인스타그램'
+          platform: '릴스/숏폼'
         }));
         await supabaseClient.from('content_plans').insert(fallback);
       }
@@ -300,7 +319,6 @@
       loadData();
     }
 
-    // 📝 단일 스티커 모달 열기/저장
     function openModal(item = null, defaultPillar = '') {
       populatePillarSelects();
       if (item) {
@@ -309,7 +327,7 @@
         document.getElementById('inputTitle').value = item.title || '';
         document.getElementById('inputPillar').value = item.pillar || pillarList[0];
         document.getElementById('inputStatus').value = item.status || '아이디어';
-        document.getElementById('inputPlatform').value = item.platform || '인스타그램';
+        document.getElementById('inputPlatform').value = item.platform || '릴스/숏폼';
         document.getElementById('inputGuideText').value = item.guide_text || '';
       } else {
         editingId = null;
@@ -317,7 +335,7 @@
         document.getElementById('inputTitle').value = '';
         document.getElementById('inputPillar').value = defaultPillar || pillarList[0];
         document.getElementById('inputStatus').value = '아이디어';
-        document.getElementById('inputPlatform').value = '인스타그램';
+        document.getElementById('inputPlatform').value = '릴스/숏폼';
         document.getElementById('inputGuideText').value = '';
       }
       document.getElementById('planModal').classList.remove('hidden');
@@ -362,32 +380,80 @@
       loadData();
     }
 
-    // ⚡ 빠른 메모 인풋 등록
-    async function saveQuickMemo() {
-      const input = document.getElementById('quickMemoInput');
-      const val = input.value.trim();
-      if (!val) return;
-
-      const defaultPillar = pillarList[0] || '자유 & 여행';
-      let res = await supabaseClient.from('content_plans').insert([{
-        title: val,
-        pillar: defaultPillar,
-        memo_type: 'plan',
-        status: '아이디어'
-      }]);
-      if (res.error && res.error.message.includes('pillar')) {
-        await supabaseClient.from('content_plans').insert([{
-          title: val,
-          memo_type: 'plan',
-          status: '아이디어'
-        }]);
-      }
-
-      input.value = '';
-      loadData();
+    // ⚡ 원클릭 문장 복사
+    function copyTitle(title, event) {
+      if (event) event.stopPropagation();
+      navigator.clipboard.writeText(title).then(() => {
+        alert('📋 문장이 클립보드에 복사되었습니다!');
+      });
     }
 
-    // 🎨 메인 3열 칸반 보드 렌더링
+    // ⚡ 원클릭 완료 토글
+    async function toggleDone(id, currentStatus, event) {
+      if (event) event.stopPropagation();
+      const nextStatus = currentStatus === '발행완료' ? '아이디어' : '발행완료';
+      
+      const item = cachedData.find(i => String(i.id) === String(id));
+      if (item) item.status = nextStatus;
+      renderBoard();
+
+      await supabaseClient.from('content_plans').update({ status: nextStatus }).eq('id', id);
+    }
+
+    // 🎨 플랫폼 틴트 바 색상 추출
+    function getPlatformTint(platform) {
+      switch (platform) {
+        case '블로그':
+          return { bg: 'bg-[#52796f]', label: '블로그' };
+        case '인스타그램':
+          return { bg: 'bg-[#c82823]', label: '인스타' };
+        default:
+          return { bg: 'bg-[#5978a2]', label: '숏폼/릴스' };
+      }
+    }
+
+    // 🎯 드래그 앤 드롭
+    function handleDragStart(e, id) {
+      draggedItemId = id;
+      e.target.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', id);
+      e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragEnd(e) {
+      e.target.classList.remove('dragging');
+      document.querySelectorAll('.drop-zone').forEach(el => el.classList.remove('drag-over'));
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const col = e.currentTarget;
+      if (!col.classList.contains('drag-over')) {
+        col.classList.add('drag-over');
+      }
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    async function handleDrop(e, targetPillar) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+
+      if (!draggedItemId) return;
+
+      const item = cachedData.find(i => String(i.id) === String(draggedItemId));
+      if (!item || item.pillar === targetPillar) return;
+
+      item.pillar = targetPillar;
+      renderBoard();
+
+      await supabaseClient.from('content_plans').update({ pillar: targetPillar }).eq('id', draggedItemId);
+    }
+
+    // 🎨 보드 렌더링
     function renderBoard() {
       const container = document.getElementById('boardColumns');
       container.innerHTML = '';
@@ -396,8 +462,11 @@
         const pillarItems = cachedData.filter(i => (i.pillar || pillarList[0]) === pillar);
 
         const colHtml = `
-          <div class="flex flex-col bg-[#eceae4]/70 rounded-3xl p-4 border border-[#e2dfd7]">
-            <!-- 기둥 상단 타이틀 바 -->
+          <div class="drop-zone flex flex-col bg-[#eceae4]/70 rounded-3xl p-4 border border-[#e2dfd7] transition min-h-[520px]"
+               ondragover="handleDragOver(event)" 
+               ondragleave="handleDragLeave(event)" 
+               ondrop="handleDrop(event, '${pillar}')">
+            
             <div class="flex items-center justify-between px-2 py-2 mb-2">
               <div class="flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-[#c82823]"></span>
@@ -409,34 +478,55 @@
               </button>
             </div>
 
-            <!-- 스티커 리스트 -->
-            <div class="space-y-3 overflow-y-auto max-h-[75vh] pr-1 no-scrollbar">
+            <div class="space-y-3 flex-1 overflow-y-auto max-h-[75vh] pr-1 no-scrollbar">
               ${pillarItems.length === 0 ? `
-                <div class="py-12 text-center text-xs text-stone-400 border border-dashed border-stone-300 rounded-2xl">
-                  아직 스티커가 없습니다.<br>아이디어를 붙여보세요!
+                <div class="py-16 text-center text-xs text-stone-400 border border-dashed border-stone-300/80 rounded-2xl flex flex-col items-center justify-center gap-1">
+                  <span>여기로 스티커를</span>
+                  <span>드래그해서 옮겨보세요!</span>
                 </div>
-              ` : pillarItems.map(item => `
-                <div onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})' class="sticker-card p-4 rounded-2xl cursor-pointer relative group flex flex-col justify-between gap-3">
-                  <!-- 빨간 핀셋 그래픽 포인트 -->
-                  <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-extrabold text-stone-400 tracking-wider uppercase">${item.platform || 'INSTAGRAM'}</span>
-                    <button onclick="deleteSticker(${item.id}, event)" class="opacity-0 group-hover:opacity-100 text-stone-300 hover:text-[#c82823] text-sm font-bold transition">&times;</button>
-                  </div>
+              ` : pillarItems.map(item => {
+                const isDone = item.status === '발행완료';
+                const tint = getPlatformTint(item.platform);
 
-                  <!-- 메인 문장 (텍스트 중심) -->
-                  <p class="text-[13px] font-semibold text-stone-800 leading-relaxed break-keep">
-                    ${item.title}
-                  </p>
+                return `
+                  <div draggable="true" 
+                       ondragstart="handleDragStart(event, ${item.id})" 
+                       ondragend="handleDragEnd(event)"
+                       onclick='openModal(${JSON.stringify(item).replace(/'/g, "&apos;")})' 
+                       class="sticker-card ${isDone ? 'sticker-done' : ''} p-3.5 sm:p-4 rounded-2xl relative group flex flex-col justify-between gap-2.5 overflow-hidden">
+                    
+                    <!-- 상단 컬러 틴트 형광펜 바 -->
+                    <div class="absolute top-0 left-0 right-0 h-1 ${tint.bg}"></div>
 
-                  <!-- 하단 상태 태그 -->
-                  <div class="flex items-center justify-between pt-1 border-t border-stone-100/80">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${item.status === '발행완료' ? 'bg-[#e8eef6] text-[#2c5282]' : 'bg-stone-100 text-stone-500'}">
-                      ${item.status || '아이디어'}
-                    </span>
-                    <span class="text-[11px] text-stone-300 group-hover:text-stone-500 transition">수정 ↗</span>
+                    <div class="flex items-center justify-between pt-0.5">
+                      <div class="flex items-center gap-1.5">
+                        <button onclick="toggleDone(${item.id}, '${item.status || '아이디어'}', event)" 
+                                title="완료 체크" 
+                                class="w-4 h-4 rounded-full border border-stone-300 flex items-center justify-center text-[10px] font-black transition ${isDone ? 'bg-stone-500 border-stone-500 text-white' : 'hover:border-stone-500 text-transparent hover:text-stone-400'}">
+                          ✓
+                        </button>
+                        <span class="text-[9px] font-extrabold text-stone-400 tracking-wider uppercase">${tint.label}</span>
+                      </div>
+                      
+                      <div class="flex items-center gap-1">
+                        <button onclick="copyTitle('${item.title.replace(/'/g, "\\'")}', event)" title="문장 복사" class="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-stone-800 text-xs p-0.5 transition">📋</button>
+                        <button onclick="deleteSticker(${item.id}, event)" title="삭제" class="opacity-0 group-hover:opacity-100 text-stone-300 hover:text-[#c82823] text-sm font-bold p-0.5 transition">&times;</button>
+                      </div>
+                    </div>
+
+                    <p class="sticker-title text-[13px] font-semibold text-stone-800 leading-relaxed break-keep pointer-events-none">
+                      ${item.title}
+                    </p>
+
+                    <div class="flex items-center justify-between pt-1 border-t border-stone-100/80 pointer-events-none text-[10px]">
+                      <span class="font-bold text-stone-400">
+                        ${item.status || '아이디어'}
+                      </span>
+                      <span class="font-bold text-stone-300 group-hover:text-stone-500 transition">⠿ 드래그 이동</span>
+                    </div>
                   </div>
-                </div>
-              `).join('')}
+                `;
+              }).join('')}
             </div>
           </div>
         `;
