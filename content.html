@@ -38,9 +38,15 @@
           <span class="text-[#c82823]">창고</span>
         </h1>
       </div>
-      <button onclick="openModal()" class="flex items-center gap-1.5 px-5 py-2.5 bg-[#c82823] hover:bg-[#ab1f1a] active:scale-95 text-white rounded-full text-xs font-bold shadow-md shadow-red-900/10 transition">
-        <span>+</span> 정식 기획 작성
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- 💡 글 뭉치를 스티커처럼 낱개 분해해 쫘르륵 넣는 벌크 버튼 -->
+        <button onclick="openBulkModal()" class="flex items-center gap-1 px-4 py-2.5 bg-[#e8eef6] hover:bg-[#cad7e6] text-[#2c5282] dark:bg-stone-800 dark:text-[#a5b9d0] rounded-full text-xs font-extrabold border border-[#cad7e6] transition active:scale-95">
+          <span>📑</span> 스티커 일괄 추가
+        </button>
+        <button onclick="openModal()" class="flex items-center gap-1.5 px-5 py-2.5 bg-[#c82823] hover:bg-[#ab1f1a] active:scale-95 text-white rounded-full text-xs font-bold shadow-md shadow-red-900/10 transition">
+          <span>+</span> 정식 기획 작성
+        </button>
+      </div>
     </div>
 
     <!-- 탭 선택 (기획목록 / 간단메모) -->
@@ -49,7 +55,7 @@
         📋 기획 목록
       </button>
       <button id="tabMemo" onclick="switchTab('quick_memo')" class="flex-1 py-2.5 rounded-xl text-xs font-bold text-stone-500 hover:text-stone-800 dark:text-stone-400 transition">
-        💡 간단 메모
+        💡 간단 메모 (아이디어 스티커)
       </button>
     </div>
   </header>
@@ -142,6 +148,50 @@
     <!-- 카드 리스트 출력 영역 (모바일: 2열 / PC: 4열) -->
     <div id="contentList" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></div>
   </main>
+
+  <!-- 📑 텍스트 일괄 분해 등록 모달 (스티커 일괄 생성) -->
+  <div id="bulkModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1f2024] rounded-3xl w-full max-w-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 dark:border-stone-800">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-200 dark:border-stone-800">
+        <div>
+          <h2 class="text-base font-black text-stone-900 dark:text-white flex items-center gap-1.5">
+            <span>📑</span> 줄글 텍스트 ➔ 스티커 일괄 분해 등록
+          </h2>
+          <p class="text-[11px] text-stone-400 mt-0.5">긴 글이나 리스트를 통째로 붙여넣으면 한 줄씩 자동 분해하여 스티커 카드로 등록합니다.</p>
+        </div>
+        <button onclick="closeBulkModal()" class="text-xl font-bold text-stone-400 hover:text-stone-600">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold mb-1 text-stone-700 dark:text-stone-300">등록 대상 위치</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-1.5 p-2 bg-[#f6f5f3] dark:bg-stone-800 border border-stone-200 rounded-xl cursor-pointer font-bold">
+              <input type="radio" name="bulkTargetType" value="quick_memo" checked class="accent-[#c82823]">
+              <span>💡 간단 메모 (아이디어 스티커)</span>
+            </label>
+            <label class="flex items-center gap-1.5 p-2 bg-[#f6f5f3] dark:bg-stone-800 border border-stone-200 rounded-xl cursor-pointer font-bold">
+              <input type="radio" name="bulkTargetType" value="plan" class="accent-[#c82823]">
+              <span>📋 정식 기획서 목록</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold mb-1 text-stone-700 dark:text-stone-300">텍스트 붙여넣기</label>
+          <textarea id="bulkTextInput" rows="12" placeholder="여기에 기둥별 20개, 60개 등 텍스트를 통째로 붙여넣으세요.
+숫자 번호(1., 2.), 기호(-, *)나 '기둥 1:' 같은 제목은 자동으로 정리되어 콘텐츠 문장만 쏙쏙 쪼개집니다." class="w-full p-3.5 border border-stone-200 dark:border-stone-700 rounded-2xl dark:bg-stone-900 focus:outline-none focus:ring-2 focus:ring-[#a5b9d0] font-sans text-xs leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeBulkModal()" class="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold rounded-2xl text-xs transition">취소</button>
+        <button onclick="processBulkText()" class="flex-2 py-3 bg-[#c82823] hover:bg-[#ab1f1a] active:scale-95 text-white font-extrabold rounded-2xl text-xs shadow-md transition">
+          ⚡ 스티커로 쪼개서 일괄 등록하기
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- 📝 정식 기획 등록/수정 모달 -->
   <div id="planModal" class="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -459,6 +509,71 @@
       }).catch(() => {
         alert('복사 실패');
       });
+    }
+
+    // 📑 벌크 모달 열기 / 닫기
+    function openBulkModal() {
+      document.getElementById('bulkTextInput').value = '';
+      document.getElementById('bulkModal').classList.remove('hidden');
+    }
+
+    function closeBulkModal() {
+      document.getElementById('bulkModal').classList.add('hidden');
+    }
+
+    // ⚡ 텍스트 자동 파싱 & 벌크 인서트 핵심 함수
+    async function processBulkText() {
+      const rawText = document.getElementById('bulkTextInput').value;
+      if (!rawText.trim()) return alert('붙여넣을 텍스트를 입력해주세요.');
+
+      const targetType = document.querySelector('input[name="bulkTargetType"]:checked').value;
+      
+      // 줄 단위 분해
+      const lines = rawText.split('\n');
+      const cleanItems = [];
+
+      lines.forEach(line => {
+        let trimmed = line.trim();
+        if (!trimmed) return;
+
+        // 불필요한 메타 헤더(예: '기둥 1:', '총 60개', '풀세트입니다' 등) 필터링
+        if (trimmed.startsWith('기둥') || trimmed.includes('풀세트') || trimmed.includes('콘텐츠 주제')) return;
+
+        // 앞쪽 번호, 불릿 기호 제거 (예: '1. ', '20. ', '- ', '* ', '• ')
+        trimmed = trimmed.replace(/^[\d\.\-\*\•\s]+/, '').trim();
+
+        if (trimmed.length > 2) {
+          cleanItems.push(trimmed);
+        }
+      });
+
+      if (cleanItems.length === 0) {
+        return alert('유효한 콘텐츠 문장을 찾지 못했습니다.');
+      }
+
+      if (!confirm(`총 ${cleanItems.length}개의 아이디어를 개별 스티커 카드로 일괄 등록하시겠습니까?`)) return;
+
+      // Supabase 일괄 삽입용 페이로드 생성
+      const payload = cleanItems.map(title => ({
+        title: title,
+        memo_type: targetType,
+        status: '아이디어',
+        platform: '인스타그램'
+      }));
+
+      const { error } = await supabaseClient.from('content_plans').insert(payload);
+
+      if (error) {
+        alert('일괄 등록 중 오류 발생: ' + error.message);
+        return;
+      }
+
+      alert(`🎉 ${cleanItems.length}개의 아이디어가 성공적으로 분해되어 등록되었습니다!`);
+      closeBulkModal();
+      
+      // 등록된 탭으로 자동 이동
+      switchTab(targetType);
+      loadData();
     }
 
     async function saveQuickMemo() {
@@ -784,7 +899,6 @@
                   ${getDDay(item.due_date)}
                   <span class="text-[10px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 px-2 py-0.5 rounded-md font-bold">${item.platform || '공통'}</span>
                   
-                  <!-- ⚡ 상태 뱃지 클릭 시 즉시 다음 상태로 변경 -->
                   <button onclick="quickUpdateStatus(${item.id}, '${item.status}', event)" title="클릭하여 상태 변경" class="text-[10px] bg-[#e8eef6] hover:bg-[#cad7e6] text-[#2c5282] dark:bg-stone-800 dark:text-[#a5b9d0] px-2 py-0.5 rounded-md font-bold transition active:scale-95 border border-[#cad7e6]/70">
                     ${item.status} ↻
                   </button>
@@ -804,7 +918,6 @@
               ${isAdContent ? `
                 <div class="flex items-center justify-between text-xs bg-stone-50 dark:bg-stone-800/40 p-2.5 rounded-xl border border-stone-100 dark:border-stone-800">
                   <span class="font-extrabold text-stone-800 dark:text-stone-200">💵 ${Number(item.pay_amount).toLocaleString()}원</span>
-                  <!-- ⚡ 입금 상태 뱃지 클릭 시 즉시 변경 -->
                   <button onclick="quickTogglePayStatus(${item.id}, '${item.pay_status || '대기'}', event)" title="클릭하여 입금상태 변경" class="text-[10px] font-bold px-2 py-0.5 rounded-md transition active:scale-95 ${item.pay_status === '완료' ? 'bg-[#e8eef6] hover:bg-[#cad7e6] text-[#2c5282] border border-[#cad7e6]' : 'bg-[#fbf0ef] hover:bg-[#f5dddc] text-[#c82823] border border-[#f4c8c6]'}">
                     ${item.pay_status === '완료' ? '🟢 완료' : '⏳ 대기'} ↻
                   </button>
