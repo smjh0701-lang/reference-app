@@ -66,7 +66,7 @@
 <body class="text-stone-800 min-h-screen pb-32">
 
   <!-- 🏷️ 상단 감성 헤더 -->
-  <header class="sticky top-0 z-30 bg-[#f3f2ee]/90 backdrop-blur-md px-6 sm:px-10 py-5 border-b border-stone-200/60 flex items-center justify-between">
+  <header class="sticky top-0 z-30 bg-[#f3f2ee]/90 backdrop-blur-md px-6 sm:px-10 py-5 border-b border-stone-200/60 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-3">
       <span class="w-3 h-3 rounded-full bg-[#c82823] shadow-xs"></span>
       <h1 class="text-lg font-black tracking-tight text-stone-900 flex items-center gap-2">
@@ -75,11 +75,32 @@
       </h1>
     </div>
 
-    <div class="flex items-center gap-2">
-      <button onclick="openPillarModal()" class="px-3.5 py-1.5 rounded-full bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 text-xs font-bold transition hover:shadow-xs">
+    <!-- 우측 도구 바 -->
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- 🎲 4번: 오늘 뭐 찍지? 랜덤 셔플 버튼 -->
+      <button onclick="pickRandomSticker()" class="px-3.5 py-1.5 rounded-full bg-[#e8eef6] hover:bg-[#cad7e6] text-[#2c5282] border border-[#cad7e6] text-xs font-black transition active:scale-95 flex items-center gap-1 shadow-xs">
+        <span>🎲</span> 오늘 뭐 찍지?
+      </button>
+
+      <!-- 👁️ 2번: 완료 숨김 토글 버튼 -->
+      <button id="hideDoneToggleBtn" onclick="toggleHideDone()" class="px-3 py-1.5 rounded-full bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 text-xs font-bold transition active:scale-95 flex items-center gap-1 shadow-xs">
+        <span id="hideDoneIcon">👁️</span> <span id="hideDoneText">완료 숨김</span>
+      </button>
+
+      <!-- 🗑️ 2번: 완료 스티커 일괄 비우기 -->
+      <button onclick="cleanDoneStickers()" title="발행완료된 스티커만 한 번에 정리" class="px-3 py-1.5 rounded-full bg-white hover:bg-stone-50 text-stone-500 hover:text-[#c82823] border border-stone-200/80 text-xs font-bold transition active:scale-95 flex items-center gap-1 shadow-xs">
+        <span>🗑️</span> 완료 비우기
+      </button>
+
+      <!-- 🧹 중복 정리 -->
+      <button onclick="cleanDuplicateStickers()" class="px-3 py-1.5 rounded-full bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 text-xs font-bold transition hover:shadow-xs active:scale-95 flex items-center gap-1 shadow-xs">
+        <span>🧹</span> 중복 정리
+      </button>
+
+      <button onclick="openPillarModal()" class="px-3 py-1.5 rounded-full bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 text-xs font-bold transition hover:shadow-xs shadow-xs">
         ⚙️ 기둥 관리
       </button>
-      <button onclick="openBulkModal()" class="px-3.5 py-1.5 rounded-full bg-[#e8eef6] hover:bg-[#cad7e6] text-[#2c5282] border border-[#cad7e6] text-xs font-extrabold transition active:scale-95">
+      <button onclick="openBulkModal()" class="px-3.5 py-1.5 rounded-full bg-white hover:bg-stone-50 text-stone-700 border border-stone-200/80 text-xs font-extrabold transition active:scale-95 shadow-xs">
         📑 스티커 일괄 쪼개기
       </button>
       <button onclick="openModal()" class="px-4 py-1.5 rounded-full bg-[#c82823] hover:bg-[#ab1f1a] text-white text-xs font-bold shadow-xs transition active:scale-95">
@@ -92,6 +113,37 @@
   <main class="max-w-[1600px] mx-auto p-4 sm:p-8">
     <div id="boardColumns" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start"></div>
   </main>
+
+  <!-- 🎲 오늘 뭐 찍지? 랜덤 팝업 모달 (4번 기능) -->
+  <div id="randomModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl w-full max-w-sm p-6 space-y-4 shadow-2xl border border-stone-200 relative overflow-hidden text-center">
+      <div class="absolute top-0 left-0 right-0 h-1.5 bg-[#c82823]"></div>
+      
+      <div class="pt-2">
+        <span class="inline-block p-3 rounded-full bg-[#fbf0ef] text-[#c82823] text-2xl mb-2">🎲</span>
+        <h3 class="text-xs font-bold text-stone-400 tracking-wider uppercase">TODAY'S PICK</h3>
+        <span id="randomPillarBadge" class="inline-block mt-1 text-[11px] font-black text-[#2c5282] bg-[#e8eef6] px-2.5 py-0.5 rounded-full border border-[#cad7e6]">
+          기둥 이름
+        </span>
+      </div>
+
+      <div class="p-4 bg-[#faf9f7] rounded-2xl border border-[#eae8e3] my-2">
+        <p id="randomStickerTitle" class="text-sm font-extrabold text-stone-800 leading-relaxed break-keep">
+          추첨된 콘텐츠 문장이 여기에 들어갑니다.
+        </p>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="pickRandomSticker()" class="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition active:scale-95">
+          다시 뽑기 ↻
+        </button>
+        <button onclick="copyRandomTitle()" class="flex-1 py-2.5 bg-[#c82823] hover:bg-[#ab1f1a] text-white font-extrabold rounded-xl text-xs transition active:scale-95 shadow-xs">
+          문장 복사 📋
+        </button>
+      </div>
+      <button onclick="closeRandomModal()" class="text-xs text-stone-400 hover:text-stone-600 block w-full text-center pt-1 font-medium">닫기</button>
+    </div>
+  </div>
 
   <!-- 📑 텍스트 일괄 분해 등록 모달 -->
   <div id="bulkModal" class="fixed inset-0 bg-stone-900/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
@@ -209,13 +261,15 @@
 
     const DEFAULT_PILLARS = ['자유 & 여행', '뷰티 & 착장', '퇴사자의 일상'];
     let pillarList = JSON.parse(localStorage.getItem('content_pillars')) || DEFAULT_PILLARS;
-    
-    // 💾 기둥 매핑 로컬 캐시 (DB 컬럼 유실 방지용)
     let pillarCache = JSON.parse(localStorage.getItem('sticker_pillar_cache')) || {};
+    
+    // 👁️ 2번: 완료 숨김 상태 저장
+    let isHideDone = JSON.parse(localStorage.getItem('hide_done_stickers')) || false;
     
     let cachedData = [];
     let editingId = null;
     let draggedItemId = null;
+    let currentRandomTitle = '';
 
     function savePillarsToStorage() {
       localStorage.setItem('content_pillars', JSON.stringify(pillarList));
@@ -233,6 +287,83 @@
       selects.forEach(s => { if (s) s.innerHTML = opts; });
     }
 
+    // 👁️ 2번: 완료 숨김 토글 함수
+    function toggleHideDone() {
+      isHideDone = !isHideDone;
+      localStorage.setItem('hide_done_stickers', JSON.stringify(isHideDone));
+      updateHideDoneButtonUI();
+      renderBoard();
+    }
+
+    function updateHideDoneButtonUI() {
+      const btn = document.getElementById('hideDoneToggleBtn');
+      const icon = document.getElementById('hideDoneIcon');
+      const text = document.getElementById('hideDoneText');
+      if (isHideDone) {
+        btn.className = 'px-3 py-1.5 rounded-full bg-[#c82823] text-white border border-[#c82823] text-xs font-extrabold transition active:scale-95 flex items-center gap-1 shadow-xs';
+        icon.innerText = '🙈';
+        text.innerText = '완료 숨김 중';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-full bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 text-xs font-bold transition active:scale-95 flex items-center gap-1 shadow-xs';
+        icon.innerText = '👁️';
+        text.innerText = '완료 숨김';
+      }
+    }
+
+    // 🗑️ 2번: 완료된 스티커 일괄 비우기
+    async function cleanDoneStickers() {
+      const doneItems = cachedData.filter(i => i.status === '발행완료');
+      if (doneItems.length === 0) return alert('발행 완료된 스티커가 없습니다.');
+
+      if (!confirm(`발행 완료된 스티커 ${doneItems.length}개를 보드에서 영구 삭제하시겠습니까?`)) return;
+
+      const doneIds = doneItems.map(i => i.id);
+
+      // 화면 즉시 반영
+      cachedData = cachedData.filter(i => i.status !== '발행완료');
+      doneIds.forEach(id => delete pillarCache[id]);
+      savePillarCache();
+      renderBoard();
+
+      // DB 일괄 삭제
+      const { error } = await supabaseClient.from('content_plans').delete().in('id', doneIds);
+      if (error) {
+        alert('삭제 실패: ' + error.message);
+        loadData();
+      } else {
+        alert(`🧹 완료된 스티커 ${doneIds.length}개를 깨끗이 정리했습니다!`);
+      }
+    }
+
+    // 🎲 4번: 오늘 뭐 찍지? 랜덤 셔플 뽑기
+    function pickRandomSticker() {
+      // 완료되지 않은 아이디어 스티커들 중에서 추첨
+      const pool = cachedData.filter(i => i.status !== '발행완료');
+      if (pool.length === 0) {
+        return alert('추첨할 진행 중인 아이디어 스티커가 없습니다. 스티커를 먼저 추가해보세요!');
+      }
+
+      const picked = pool[Math.floor(Math.random() * pool.length)];
+      const pillar = picked.pillar || pillarCache[picked.id] || pillarList[0];
+
+      currentRandomTitle = picked.title;
+      document.getElementById('randomPillarBadge').innerText = `🏛️ ${pillar}`;
+      document.getElementById('randomStickerTitle').innerText = picked.title;
+      document.getElementById('randomModal').classList.remove('hidden');
+    }
+
+    function closeRandomModal() {
+      document.getElementById('randomModal').classList.add('hidden');
+    }
+
+    function copyRandomTitle() {
+      if (!currentRandomTitle) return;
+      navigator.clipboard.writeText(currentRandomTitle).then(() => {
+        alert('📋 오늘의 추천 문장이 복사되었습니다!');
+      });
+    }
+
+    // 🏛️ 기둥 관리
     function openPillarModal() {
       renderPillarManageList();
       document.getElementById('newPillarInput').value = '';
@@ -268,7 +399,6 @@
       if (!newName || !newName.trim() || newName.trim() === oldName) return;
 
       pillarList[idx] = newName.trim();
-      // 캐시된 기둥 이름도 업데이트
       Object.keys(pillarCache).forEach(k => {
         if (pillarCache[k] === oldName) pillarCache[k] = newName.trim();
       });
@@ -284,6 +414,7 @@
       renderPillarManageList();
     }
 
+    // 📑 스티커 일괄 쪼개기
     function openBulkModal() {
       populatePillarSelects();
       document.getElementById('bulkTextInput').value = '';
@@ -329,7 +460,6 @@
         res = await supabaseClient.from('content_plans').insert(fallback).select();
       }
 
-      // 로컬 기둥 캐시 저장
       if (res.data) {
         res.data.forEach(item => {
           pillarCache[item.id] = targetPillar;
@@ -402,22 +532,59 @@
       loadData();
     }
 
-    // 🗑️ 삭제 즉시 화면에서 제거 및 DB 삭제
     async function deleteSticker(id, event) {
       if (event) event.stopPropagation();
       if (!confirm('이 스티커를 뗄까요?')) return;
 
-      // 1. 화면 즉시 삭제 (낙관적 UI)
       cachedData = cachedData.filter(i => String(i.id) !== String(id));
       delete pillarCache[id];
       savePillarCache();
       renderBoard();
 
-      // 2. DB 삭제 실행
       const { error } = await supabaseClient.from('content_plans').delete().eq('id', id);
       if (error) {
         alert('삭제 실패: ' + error.message);
         loadData();
+      }
+    }
+
+    // 🧹 중복 정리
+    async function cleanDuplicateStickers() {
+      if (cachedData.length === 0) return alert('정리할 스티커가 없습니다.');
+
+      const seenTitles = new Set();
+      const duplicateIds = [];
+
+      cachedData.forEach(item => {
+        const cleanTitle = (item.title || '').replace(/\s+/g, '').toLowerCase();
+        if (!cleanTitle) return;
+
+        if (seenTitles.has(cleanTitle)) {
+          duplicateIds.push(item.id);
+        } else {
+          seenTitles.add(cleanTitle);
+        }
+      });
+
+      if (duplicateIds.length === 0) {
+        return alert('✨ 완벽해요! 중복된 스티커가 없습니다.');
+      }
+
+      if (!confirm(`중복된 스티커가 총 ${duplicateIds.length}개 발견되었습니다.\n동일한 스티커를 정리하시겠습니까?`)) {
+        return;
+      }
+
+      cachedData = cachedData.filter(i => !duplicateIds.includes(i.id));
+      duplicateIds.forEach(id => delete pillarCache[id]);
+      savePillarCache();
+      renderBoard();
+
+      const { error } = await supabaseClient.from('content_plans').delete().in('id', duplicateIds);
+      if (error) {
+        alert('중복 삭제 실패: ' + error.message);
+        loadData();
+      } else {
+        alert(`🧹 중복 스티커 ${duplicateIds.length}개를 정리했습니다!`);
       }
     }
 
@@ -487,13 +654,11 @@
       const item = cachedData.find(i => String(i.id) === String(draggedItemId));
       if (!item) return;
 
-      // 화면 즉시 이동 및 로컬 캐시 저장
       item.pillar = targetPillar;
       pillarCache[item.id] = targetPillar;
       savePillarCache();
       renderBoard();
 
-      // DB 업데이트
       const { error } = await supabaseClient.from('content_plans').update({ pillar: targetPillar }).eq('id', draggedItemId);
       if (error && !error.message.includes('pillar')) {
         console.error('DB 기둥 업데이트 오류:', error);
@@ -506,10 +671,15 @@
       container.innerHTML = '';
 
       pillarList.forEach(pillar => {
-        const pillarItems = cachedData.filter(i => {
+        let pillarItems = cachedData.filter(i => {
           const itemPillar = i.pillar || pillarCache[i.id] || pillarList[0];
           return itemPillar === pillar;
         });
+
+        // 👁️ 2번: 완료 숨김 활성화 시 필터링
+        if (isHideDone) {
+          pillarItems = pillarItems.filter(i => i.status !== '발행완료');
+        }
 
         const colHtml = `
           <div class="drop-zone flex flex-col bg-[#eceae4]/70 rounded-3xl p-4 border border-[#e2dfd7] transition min-h-[520px]"
@@ -587,7 +757,6 @@
       const { data } = await supabaseClient.from('content_plans').select('*');
       cachedData = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-      // DB에서 가져온 데이터에 로컬 기둥 캐시 매핑
       cachedData.forEach(item => {
         if (!item.pillar && pillarCache[item.id]) {
           item.pillar = pillarCache[item.id];
@@ -597,6 +766,7 @@
       });
       savePillarCache();
 
+      updateHideDoneButtonUI();
       renderBoard();
     }
 
