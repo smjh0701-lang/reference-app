@@ -330,6 +330,42 @@
     let touchGhost = null;
     let currentDropTarget = null;
 
+    // 💡 대한민국 법정 공휴일 (고정 공휴일 및 연도별 대체공휴일/음력명절)
+    const HOLIDAYS_SOLAR = {
+      '01-01': '신정',
+      '03-01': '삼일절',
+      '05-05': '어린이날',
+      '06-06': '현충일',
+      '08-15': '광복절',
+      '10-03': '개천절',
+      '10-09': '한글날',
+      '12-25': '성탄절'
+    };
+
+    // 연도별 음력 명절 및 대체공휴일
+    const SPECIAL_HOLIDAYS = {
+      // 2025년
+      '2025-01-28': '설날연휴', '2025-01-29': '설날', '2025-01-30': '설날연휴',
+      '2025-03-03': '대체공휴일', '2025-05-06': '대체공휴일',
+      '2025-10-05': '추석연휴', '2025-10-06': '추석', '2025-10-07': '추석연휴', '2025-10-08': '대체공휴일',
+      // 2026년
+      '2026-02-16': '설날연휴', '2026-02-17': '설날', '2026-02-18': '설날연휴',
+      '2026-03-02': '대체공휴일', '2026-05-24': '부처님오신날', '2026-05-25': '대체공휴일',
+      '2026-08-17': '대체공휴일', '2026-09-24': '추석연휴', '2026-09-25': '추석', '2026-09-26': '추석연휴', '2026-09-28': '대체공휴일',
+      '2026-10-05': '대체공휴일',
+      // 2027년
+      '2027-02-06': '설날연휴', '2027-02-07': '설날', '2027-02-08': '설날연휴', '2027-02-09': '대체공휴일',
+      '2027-05-13': '부처님오신날',
+      '2027-09-14': '추석연휴', '2027-09-15': '추석', '2027-09-16': '추석연휴',
+      '2027-10-04': '대체공휴일', '2027-10-11': '대체공휴일'
+    };
+
+    function getHolidayName(dateStr) {
+      if (SPECIAL_HOLIDAYS[dateStr]) return SPECIAL_HOLIDAYS[dateStr];
+      const md = dateStr.slice(5); // MM-DD
+      return HOLIDAYS_SOLAR[md] || null;
+    }
+
     function cleanContentTypes(rawTypeStr) {
       if (!rawTypeStr) return [];
       const parts = rawTypeStr.split(',').map(s => s.trim()).filter(Boolean);
@@ -516,7 +552,8 @@
       const listContainer = document.getElementById('dayDetailList');
       const addBtn = document.getElementById('dayDetailAddBtn');
 
-      titleElem.innerText = `📅 ${dateStr} 일정`;
+      const holiday = getHolidayName(dateStr);
+      titleElem.innerHTML = `📅 ${dateStr} 일정 ${holiday ? `<span class="text-xs text-palette-rosewood font-black ml-1">(${holiday})</span>` : ''}`;
       addBtn.onclick = () => {
         closeDayDetailModal();
         openModal(dateStr);
@@ -557,11 +594,9 @@
                 <button onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="text-xs text-palette-muted hover:text-palette-midnight shrink-0 p-1">✏️ 수정</button>
               </div>
 
-              <!-- 개별 콘텐츠별 원클릭 완료 토글 버튼들 -->
               ${item.category === '원고마감' && totalTags.length > 0 ? `
                 <div class="pt-1.5 border-t border-palette-border/60 flex items-center gap-1.5 flex-wrap">
-                  <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>
-                  ${totalTags.map(tag => {
+                  <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>${totalTags.map(tag => {
                     const isChecked = doneTags.includes(tag);
                     return `
                       <button type="button" onclick="toggleTagComplete(${item.id}, '${tag}', event)" 
@@ -860,7 +895,6 @@
       draggedItemId = null;
     }
 
-    // 💡 캘린더 바 색상: 방문일(초록)과 겹치지 않게 '일부 완료'는 화사한 살구빛 앰버 오렌지 적용
     function getBarColor(item) {
       if (item.category === '원고마감') {
         const totalCount = (item.cleaned_types || []).length;
@@ -871,10 +905,8 @@
           return 'bg-[#EBE7DF] text-palette-muted line-through opacity-75 font-bold';
         }
         if (doneCount > 0) {
-          // 방문일(초록)과 확실히 다른 산뜻한 살구/앰버 오렌지
           return 'bg-[#FFF0DE] text-[#B85D19] border border-[#FCD2A4] font-black';
         }
-        // 미완료: 핑크
         return 'bg-palette-blush text-palette-rosewood font-extrabold shadow-sm';
       }
       if (item.category === '방문일') return 'bg-palette-sage-soft text-palette-midnight font-bold border border-palette-sage/40';
@@ -910,9 +942,15 @@
         const isSelected = dateStr === selectedDateStr;
 
         const dayOfWeek = new Date(year, month, date).getDay();
+        const holidayName = getHolidayName(dateStr);
+
+        // 💡 일요일이거나 공휴일이면 무조건 빨간색 처리
         let dateColor = 'text-palette-midnight';
-        if (dayOfWeek === 0) dateColor = 'text-palette-rosewood';
-        else if (dayOfWeek === 6) dateColor = 'text-palette-sky';
+        if (dayOfWeek === 0 || holidayName) {
+          dateColor = 'text-palette-rosewood';
+        } else if (dayOfWeek === 6) {
+          dateColor = 'text-palette-sky';
+        }
 
         const dayEvents = scheduleList
           .filter(s => s.event_date === dateStr)
@@ -931,6 +969,7 @@
               <span class="text-[10px] sm:text-xs font-black ${dateColor} ${isToday ? 'w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-palette-midnight text-white flex items-center justify-center text-[9px] sm:text-[11px]' : ''}">
                 ${date}
               </span>
+              ${holidayName ? `<span class="text-[8px] sm:text-[9px] font-black text-palette-rosewood truncate max-w-[45px] sm:max-w-none leading-none">${holidayName}</span>` : ''}
             </div>
 
             <div class="space-y-0.5 mt-1 overflow-hidden w-full">
@@ -940,7 +979,6 @@
                 const doneCount = (ev.done_tags || []).length;
                 const isAllDone = totalCount > 0 && doneCount >= totalCount;
 
-                // 💡 캘린더 바 오른쪽 미니 숫자 뱃지
                 let badgeHtml = '';
                 if (ev.category === '원고마감') {
                   if (isAllDone) {
@@ -1011,7 +1049,8 @@
       let targetEvents = [];
 
       if (selectedDateStr) {
-        titleElem.innerHTML = `<span>📌</span> ${selectedDateStr} 일정`;
+        const holiday = getHolidayName(selectedDateStr);
+        titleElem.innerHTML = `<span>📌</span> ${selectedDateStr} 일정 ${holiday ? `<span class="text-xs text-palette-rosewood font-black">(${holiday})</span>` : ''}`;
         targetEvents = scheduleList
           .filter(s => s.event_date === selectedDateStr)
           .sort((a, b) => (a.event_time || '99:99').localeCompare(b.event_time || '99:99'));
@@ -1076,12 +1115,11 @@
             <!-- 개별 완료 체크/해제 버튼들 -->
             ${item.category === '원고마감' && totalTags.length > 0 ? `
               <div class="pt-1.5 border-t border-palette-border/50 flex items-center gap-1.5 flex-wrap">
-                <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>
-                ${totalTags.map(tag => {
+                <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>${totalTags.map(tag => {
                   const isChecked = doneTags.includes(tag);
                   return `
                     <button type="button" onclick="toggleTagComplete(${item.id}, '${tag}', event)" 
-                            class="px-2 py-0.5 rounded-md text-[9px] font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${isChecked ? 'bg-[#6B8E23] text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
+                            class="px-2 py-0.5 rounded-md text-[9px] font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${isChecked ? 'bg-palette-sage text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
                       <span>${isChecked ? '✓' : '○'}</span>
                       <span>${tag}</span>
                     </button>
