@@ -330,7 +330,7 @@
     let touchGhost = null;
     let currentDropTarget = null;
 
-    // 💡 대한민국 법정 공휴일 (고정 공휴일 및 연도별 대체공휴일/음력명절)
+    // 양력 고정 공휴일
     const HOLIDAYS_SOLAR = {
       '01-01': '신정',
       '03-01': '삼일절',
@@ -342,7 +342,7 @@
       '12-25': '성탄절'
     };
 
-    // 연도별 음력 명절 및 대체공휴일
+    // 연도별 음력 명절, 대체공휴일 및 선거일
     const SPECIAL_HOLIDAYS = {
       // 2025년
       '2025-01-28': '설날연휴', '2025-01-29': '설날', '2025-01-30': '설날연휴',
@@ -350,11 +350,15 @@
       '2025-10-05': '추석연휴', '2025-10-06': '추석', '2025-10-07': '추석연휴', '2025-10-08': '대체공휴일',
       // 2026년
       '2026-02-16': '설날연휴', '2026-02-17': '설날', '2026-02-18': '설날연휴',
-      '2026-03-02': '대체공휴일', '2026-05-24': '부처님오신날', '2026-05-25': '대체공휴일',
-      '2026-08-17': '대체공휴일', '2026-09-24': '추석연휴', '2026-09-25': '추석', '2026-09-26': '추석연휴', '2026-09-28': '대체공휴일',
+      '2026-03-02': '대체공휴일',
+      '2026-05-24': '부처님오신날', '2026-05-25': '대체공휴일',
+      '2026-06-03': '지방선거',
+      '2026-08-17': '대체공휴일',
+      '2026-09-24': '추석연휴', '2026-09-25': '추석', '2026-09-26': '추석연휴',
       '2026-10-05': '대체공휴일',
       // 2027년
       '2027-02-06': '설날연휴', '2027-02-07': '설날', '2027-02-08': '설날연휴', '2027-02-09': '대체공휴일',
+      '2027-03-03': '대통령선거',
       '2027-05-13': '부처님오신날',
       '2027-09-14': '추석연휴', '2027-09-15': '추석', '2027-09-16': '추석연휴',
       '2027-10-04': '대체공휴일', '2027-10-11': '대체공휴일'
@@ -362,7 +366,7 @@
 
     function getHolidayName(dateStr) {
       if (SPECIAL_HOLIDAYS[dateStr]) return SPECIAL_HOLIDAYS[dateStr];
-      const md = dateStr.slice(5); // MM-DD
+      const md = dateStr.slice(5);
       return HOLIDAYS_SOLAR[md] || null;
     }
 
@@ -944,7 +948,6 @@
         const dayOfWeek = new Date(year, month, date).getDay();
         const holidayName = getHolidayName(dateStr);
 
-        // 💡 일요일이거나 공휴일이면 무조건 빨간색 처리
         let dateColor = 'text-palette-midnight';
         if (dayOfWeek === 0 || holidayName) {
           dateColor = 'text-palette-rosewood';
@@ -1119,7 +1122,7 @@
                   const isChecked = doneTags.includes(tag);
                   return `
                     <button type="button" onclick="toggleTagComplete(${item.id}, '${tag}', event)" 
-                            class="px-2 py-0.5 rounded-md text-[9px] font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${isChecked ? 'bg-palette-sage text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
+                            class="px-2 py-0.5 rounded-md text-[9px] font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${isChecked ? 'bg-[#6B8E23] text-white shadow-xs' : 'bg-white border border-palette-border text-palette-midnight hover:bg-palette-blush-soft'}">
                       <span>${isChecked ? '✓' : '○'}</span>
                       <span>${tag}</span>
                     </button>
