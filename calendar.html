@@ -53,26 +53,27 @@
       pointer-events: none;
       z-index: 9999;
       opacity: 0.95;
-      transform: scale(1.06);
+      transform: scale(1.05);
       box-shadow: 0 14px 30px rgba(0,0,0,0.25);
     }
-    .prevent-scroll {
+    body.is-dragging {
       overflow: hidden !important;
       touch-action: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
     }
   </style>
 </head>
 <body class="text-palette-midnight min-h-screen pb-20 select-none">
 
-  <!-- 상단 네비게이션 헤더 -->
   <header class="sticky top-0 z-40 bg-palette-cream/95 backdrop-blur-md border-b border-palette-border px-4 sm:px-8 py-3">
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2 sm:gap-3">
         <h1 id="currentMonthYear" class="text-lg sm:text-2xl font-black tracking-tight text-palette-midnight"></h1>
         <div class="flex items-center gap-1 bg-white/70 p-1 rounded-full border border-palette-border">
-          <button id="prevMonthBtn" onclick="changeMonth(-1)" ondragover="handleMonthBtnDragOver(event, -1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❮</button>
+          <button id="prevMonthBtn" onclick="changeMonth(-1)" ondragover="handleMonthNavHover(event, -1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❮</button>
           <button onclick="goToday()" class="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold hover:bg-white transition">오늘</button>
-          <button id="nextMonthBtn" onclick="changeMonth(1)" ondragover="handleMonthBtnDragOver(event, 1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❯</button>
+          <button id="nextMonthBtn" onclick="changeMonth(1)" ondragover="handleMonthNavHover(event, 1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❯</button>
         </div>
       </div>
 
@@ -81,7 +82,6 @@
       </button>
     </div>
 
-    <!-- 정산 요약 바 -->
     <div class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto mt-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs pb-1">
       <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-palette-midnight/20 shrink-0 shadow-sm">
         <span class="text-[10px] font-black text-palette-midnight">✨ 총 혜택가치</span>
@@ -106,10 +106,9 @@
     </div>
   </header>
 
-  <!-- 메인 캘린더 영역 -->
   <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto px-1 sm:px-6 pt-2 sm:pt-4 space-y-4">
-    <div id="calendarSwipeArea" class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden">
-      <div class="grid grid-cols-7 text-center py-2 border-b border-palette-border text-[11px] sm:text-xs font-black">
+    <div class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden">
+      <div id="calendarSwipeHeader" class="grid grid-cols-7 text-center py-2 border-b border-palette-border text-[11px] sm:text-xs font-black cursor-pointer">
         <div class="text-palette-rosewood">일</div>
         <div class="text-palette-midnight">월</div>
         <div class="text-palette-midnight">화</div>
@@ -121,7 +120,6 @@
       <div id="calendarGrid" class="grid grid-cols-7 border-collapse divide-x divide-y divide-palette-border/50"></div>
     </div>
 
-    <!-- 이번 달 / 선택된 날짜 일정 목록 -->
     <div class="bg-white border border-palette-border rounded-2xl sm:rounded-[28px] p-4 sm:p-6 shadow-sm space-y-3">
       <div class="flex items-center justify-between">
         <h3 id="detailListTitle" class="text-xs sm:text-sm font-black text-palette-midnight flex items-center gap-1.5">
@@ -133,7 +131,6 @@
     </div>
   </main>
 
-  <!-- 1️⃣ 날짜 클릭 시 나타나는 일정 목록 팝업 -->
   <div id="dayDetailModal" class="fixed inset-0 bg-palette-midnight/40 backdrop-blur-sm z-45 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
     <div class="bg-palette-cream rounded-t-[28px] sm:rounded-[28px] w-full max-w-md p-5 space-y-4 max-h-[80vh] flex flex-col border border-palette-border shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-palette-border">
@@ -152,7 +149,6 @@
     </div>
   </div>
 
-  <!-- 2️⃣ 일정 등록 및 수정 모달 -->
   <div id="scheduleModal" class="fixed inset-0 bg-palette-midnight/50 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
     <div class="bg-palette-cream rounded-t-[28px] sm:rounded-[28px] w-full max-w-md sm:max-w-lg p-5 sm:p-7 space-y-3.5 max-h-[90vh] overflow-y-auto border border-palette-border shadow-2xl">
       <div class="flex justify-between items-center pb-2 border-b border-palette-border">
@@ -187,7 +183,6 @@
           </div>
         </div>
 
-        <!-- 방문일 일정 불러오기 탭 -->
         <div id="importVisitContainer" class="hidden p-2.5 bg-palette-blush-soft/70 border border-palette-rosewood/30 rounded-xl space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="font-bold text-palette-rosewood flex items-center gap-1">
@@ -205,7 +200,6 @@
           <input type="text" id="inputTitle" placeholder="예: 성수 브런치 카페, 제주 독채 펜션" class="w-full px-3.5 py-2 bg-white border border-palette-border rounded-xl focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-semibold">
         </div>
 
-        <!-- 동행인 필드 -->
         <div>
           <label class="block font-bold text-palette-midnight mb-1">동행인 (누구랑)</label>
           <div class="flex flex-wrap gap-1 mb-1.5">
@@ -231,7 +225,6 @@
           <input type="text" id="inputPlatform" placeholder="예: 레뷰, 리뷰노트, 인스타 DM 등" class="w-full px-3.5 py-2 bg-white border border-palette-border rounded-xl focus:outline-none focus:ring-2 focus:ring-palette-sky text-palette-midnight font-medium">
         </div>
 
-        <!-- 콘텐츠 형태 태그 선택 -->
         <div>
           <label class="block font-bold text-palette-midnight mb-1">콘텐츠 형태 (중복 선택 가능)</label>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5" id="contentTypeContainer">
@@ -336,7 +329,7 @@
     let currentDropTarget = null;
     let monthSwitchTimer = null;
 
-    // 모바일 캘린더 스와이프 관리
+    // 모바일 캘린더 상단 헤더 스와이프 관리
     let swipeStartX = 0;
     let swipeStartY = 0;
 
@@ -606,7 +599,6 @@
                 <button onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="text-xs text-palette-muted hover:text-palette-midnight shrink-0 p-1">✏️ 수정</button>
               </div>
 
-              <!-- 개별 콘텐츠별 원클릭 완료 토글 버튼들 -->
               ${item.category === '원고마감' && totalTags.length > 0 ? `
                 <div class="pt-1.5 border-t border-palette-border/60 flex items-center gap-1.5 flex-wrap">
                   <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>${totalTags.map(tag => {
@@ -824,7 +816,7 @@
       }
     }
 
-    // 마우스 드래그
+    // PC 마우스 드래그
     function handleDragStart(e, id) {
       e.stopPropagation();
       draggedItemId = id;
@@ -861,59 +853,58 @@
       }
     }
 
-    function handleMonthBtnDragOver(e, delta) {
+    function handleMonthNavHover(e, delta) {
       e.preventDefault();
       if (!monthSwitchTimer) {
         monthSwitchTimer = setTimeout(() => {
           changeMonth(delta);
           monthSwitchTimer = null;
-        }, 500);
+        }, 450);
       }
     }
 
-    // 💡 모바일 터치 드래그: 화면 스크롤 완전 차단 및 전방향 부드러운 이동
-    function handleTouchStart(e, id) {
+    // 💡 모바일 터치 드래그: 브라우저 기본 스크롤 강제 차단 리스너 연동
+    function handleTouchStartItem(e, id) {
       e.stopPropagation();
       const touch = e.touches[0];
       draggedItemId = id;
 
-      // 브라우저 세로 스크롤 잠금
-      document.body.classList.add('prevent-scroll');
+      document.body.classList.add('is-dragging');
 
       const target = e.currentTarget;
       touchGhost = target.cloneNode(true);
       touchGhost.classList.add('touch-dragging');
       touchGhost.style.width = `${target.offsetWidth}px`;
       touchGhost.style.left = `${touch.clientX - (target.offsetWidth / 2)}px`;
-      touchGhost.style.top = `${touch.clientY - 24}px`;
+      touchGhost.style.top = `${touch.clientY - 20}px`;
       document.body.appendChild(touchGhost);
     }
 
-    function handleTouchMove(e) {
-      if (!touchGhost || !draggedItemId) return;
-      // 💡 화면 스크롤 완벽 방지
-      e.preventDefault();
+    // 💡 window 레벨에서 passive: false로 touchmove를 제어해 화면 스크롤 100% 차단
+    window.addEventListener('touchmove', function(e) {
+      if (!draggedItemId || !touchGhost) return;
+      e.preventDefault(); // 스크롤 완전 방지
 
       const touch = e.touches[0];
       const ghostW = touchGhost.offsetWidth;
       touchGhost.style.left = `${touch.clientX - (ghostW / 2)}px`;
-      touchGhost.style.top = `${touch.clientY - 24}px`;
+      touchGhost.style.top = `${touch.clientY - 20}px`;
 
-      // 화면 좌우 가장자리로 끌고 갔을 때 달 넘기기
+      // 화면 가장자리 머무를 시 다음달/이전달 넘김
       const screenW = window.innerWidth;
-      if (touch.clientX < 30) {
+      if (touch.clientX < 28) {
         if (!monthSwitchTimer) {
           monthSwitchTimer = setTimeout(() => {
             changeMonth(-1);
             monthSwitchTimer = null;
-          }, 600);
+          }, 500);
         }
-      } else if (touch.clientX > screenW - 30) {
+      } else if (touch.clientX > screenW - 28) {
         if (!monthSwitchTimer) {
           monthSwitchTimer = setTimeout(() => {
             changeMonth(1);
             monthSwitchTimer = null;
-          }, 600);
+          }, 500);
         }
       } else {
         if (monthSwitchTimer) {
@@ -933,11 +924,11 @@
         dropCell.classList.add('drag-over');
         currentDropTarget = dropCell;
       }
-    }
+    }, { passive: false });
 
-    function handleTouchEnd(e) {
-      // 브라우저 세로 스크롤 잠금 해제
-      document.body.classList.remove('prevent-scroll');
+    window.addEventListener('touchend', function(e) {
+      if (!draggedItemId) return;
+      document.body.classList.remove('is-dragging');
 
       if (monthSwitchTimer) {
         clearTimeout(monthSwitchTimer);
@@ -956,30 +947,24 @@
         }
       }
       draggedItemId = null;
-    }
+    });
 
-    // 💡 달력 빈 공간을 손으로 밀었을 때 달 넘기기 제스처
-    const swipeArea = document.getElementById('calendarSwipeArea');
-    swipeArea.addEventListener('touchstart', (e) => {
-      if (draggedItemId) return;
+    // 💡 달력 넘기기 제스처: 일정 칸이 아닌 상단 요일 헤더 영역에서만 작동하도록 제한
+    const swipeHeader = document.getElementById('calendarSwipeHeader');
+    swipeHeader.addEventListener('touchstart', (e) => {
       swipeStartX = e.touches[0].clientX;
       swipeStartY = e.touches[0].clientY;
     }, { passive: true });
 
-    swipeArea.addEventListener('touchend', (e) => {
-      if (draggedItemId) return;
+    swipeHeader.addEventListener('touchend', (e) => {
       const endX = e.changedTouches[0].clientX;
       const endY = e.changedTouches[0].clientY;
       const diffX = endX - swipeStartX;
       const diffY = endY - swipeStartY;
 
-      // 수평 이동이 크고 50px 이상 밀었을 때 작동
-      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-        if (diffX < 0) {
-          changeMonth(1); // 왼쪽으로 밀면 다음 달
-        } else {
-          changeMonth(-1); // 오른쪽으로 밀면 이전 달
-        }
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 40) {
+        if (diffX < 0) changeMonth(1);
+        else changeMonth(-1);
       }
     }, { passive: true });
 
@@ -1080,9 +1065,7 @@
                     draggable="true"
                     ondragstart="handleDragStart(event, ${ev.id})"
                     ondragend="handleDragEnd(event)"
-                    ontouchstart="handleTouchStart(event, ${ev.id})"
-                    ontouchmove="handleTouchMove(event)"
-                    ontouchend="handleTouchEnd(event)"
+                    ontouchstart="handleTouchStartItem(event, ${ev.id})"
                     onclick="event.stopPropagation(); openModal('', ${JSON.stringify(ev).replace(/"/g, '&quot;')})" 
                     class="cursor-grab active:cursor-grabbing text-[8px] sm:text-[10px] px-1 py-0.5 rounded-[4px] leading-tight transition-transform flex items-center justify-between gap-1 ${getBarColor(ev)}"
                     title="진행: ${doneCount}/${totalCount}">
@@ -1199,7 +1182,6 @@
               </div>
             </div>
 
-            <!-- 개별 완료 체크/해제 버튼들 -->
             ${item.category === '원고마감' && totalTags.length > 0 ? `
               <div class="pt-1.5 border-t border-palette-border/50 flex items-center gap-1.5 flex-wrap">
                 <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>${totalTags.map(tag => {
