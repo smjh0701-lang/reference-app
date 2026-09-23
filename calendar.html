@@ -45,8 +45,8 @@
       outline-offset: -2px;
     }
     .dragging {
-      opacity: 0.45;
-      transform: scale(0.97);
+      opacity: 0.35;
+      transform: scale(0.95);
     }
     .touch-dragging {
       position: fixed;
@@ -54,7 +54,11 @@
       z-index: 9999;
       opacity: 0.95;
       transform: scale(1.06);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.22);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.25);
+    }
+    .prevent-scroll {
+      overflow: hidden !important;
+      touch-action: none !important;
     }
   </style>
 </head>
@@ -104,7 +108,7 @@
 
   <!-- 메인 캘린더 영역 -->
   <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto px-1 sm:px-6 pt-2 sm:pt-4 space-y-4">
-    <div id="calendarSwipeArea" class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden touch-pan-y">
+    <div id="calendarSwipeArea" class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden">
       <div class="grid grid-cols-7 text-center py-2 border-b border-palette-border text-[11px] sm:text-xs font-black">
         <div class="text-palette-rosewood">일</div>
         <div class="text-palette-midnight">월</div>
@@ -326,16 +330,16 @@
     let selectedDateStr = null;
     let selectedTypes = [];
 
+    // 드래그 상태 관리
     let draggedItemId = null;
     let touchGhost = null;
     let currentDropTarget = null;
     let monthSwitchTimer = null;
 
-    // 모바일 캘린더 스와이프 제스처 변수
+    // 모바일 캘린더 스와이프 관리
     let swipeStartX = 0;
     let swipeStartY = 0;
 
-    // 양력 고정 공휴일
     const HOLIDAYS_SOLAR = {
       '01-01': '신정',
       '03-01': '삼일절',
@@ -347,7 +351,6 @@
       '12-25': '성탄절'
     };
 
-    // 연도별 실제 법정 공휴일 (2026년 9월 28일 평일 교정 완료)
     const SPECIAL_HOLIDAYS = {
       // 2025년
       '2025-01-28': '설날연휴', '2025-01-29': '설날', '2025-01-30': '설날연휴',
@@ -603,6 +606,7 @@
                 <button onclick="closeDayDetailModal(); openModal('', ${JSON.stringify(item).replace(/"/g, '&quot;')})" class="text-xs text-palette-muted hover:text-palette-midnight shrink-0 p-1">✏️ 수정</button>
               </div>
 
+              <!-- 개별 콘텐츠별 원클릭 완료 토글 버튼들 -->
               ${item.category === '원고마감' && totalTags.length > 0 ? `
                 <div class="pt-1.5 border-t border-palette-border/60 flex items-center gap-1.5 flex-wrap">
                   <span class="text-[10px] font-bold text-palette-muted">완료 체크 (${doneTags.length}/${totalTags.length}):</span>${totalTags.map(tag => {
@@ -820,7 +824,7 @@
       }
     }
 
-    // 마우스 드래그 이벤트
+    // 마우스 드래그
     function handleDragStart(e, id) {
       e.stopPropagation();
       draggedItemId = id;
@@ -857,7 +861,6 @@
       }
     }
 
-    // PC에서 드래그 중 상단 화살표 버튼에 올렸을 때 달 넘기기
     function handleMonthBtnDragOver(e, delta) {
       e.preventDefault();
       if (!monthSwitchTimer) {
@@ -868,37 +871,44 @@
       }
     }
 
-    // 모바일 터치 드래그 & 가장자리 이동으로 다른 달 넘기기
+    // 💡 모바일 터치 드래그: 화면 스크롤 완전 차단 및 전방향 부드러운 이동
     function handleTouchStart(e, id) {
       e.stopPropagation();
       const touch = e.touches[0];
       draggedItemId = id;
 
+      // 브라우저 세로 스크롤 잠금
+      document.body.classList.add('prevent-scroll');
+
       const target = e.currentTarget;
       touchGhost = target.cloneNode(true);
       touchGhost.classList.add('touch-dragging');
       touchGhost.style.width = `${target.offsetWidth}px`;
-      touchGhost.style.left = `${touch.clientX - 20}px`;
-      touchGhost.style.top = `${touch.clientY - 20}px`;
+      touchGhost.style.left = `${touch.clientX - (target.offsetWidth / 2)}px`;
+      touchGhost.style.top = `${touch.clientY - 24}px`;
       document.body.appendChild(touchGhost);
     }
 
     function handleTouchMove(e) {
-      if (!touchGhost) return;
-      const touch = e.touches[0];
-      touchGhost.style.left = `${touch.clientX - 20}px`;
-      touchGhost.style.top = `${touch.clientY - 20}px`;
+      if (!touchGhost || !draggedItemId) return;
+      // 💡 화면 스크롤 완벽 방지
+      e.preventDefault();
 
-      // 화면 좌우 끝(25px 이내)으로 드래그 시 자동으로 이전 달/다음 달 넘김
+      const touch = e.touches[0];
+      const ghostW = touchGhost.offsetWidth;
+      touchGhost.style.left = `${touch.clientX - (ghostW / 2)}px`;
+      touchGhost.style.top = `${touch.clientY - 24}px`;
+
+      // 화면 좌우 가장자리로 끌고 갔을 때 달 넘기기
       const screenW = window.innerWidth;
-      if (touch.clientX < 25) {
+      if (touch.clientX < 30) {
         if (!monthSwitchTimer) {
           monthSwitchTimer = setTimeout(() => {
             changeMonth(-1);
             monthSwitchTimer = null;
           }, 600);
         }
-      } else if (touch.clientX > screenW - 25) {
+      } else if (touch.clientX > screenW - 30) {
         if (!monthSwitchTimer) {
           monthSwitchTimer = setTimeout(() => {
             changeMonth(1);
@@ -926,6 +936,9 @@
     }
 
     function handleTouchEnd(e) {
+      // 브라우저 세로 스크롤 잠금 해제
+      document.body.classList.remove('prevent-scroll');
+
       if (monthSwitchTimer) {
         clearTimeout(monthSwitchTimer);
         monthSwitchTimer = null;
@@ -945,10 +958,9 @@
       draggedItemId = null;
     }
 
-    // 💡 모바일 캘린더 화면 좌우 스와이프 제스처 (달 넘기기)
+    // 💡 달력 빈 공간을 손으로 밀었을 때 달 넘기기 제스처
     const swipeArea = document.getElementById('calendarSwipeArea');
     swipeArea.addEventListener('touchstart', (e) => {
-      // 드래그 중이 아닐 때만 스와이프 시작 감지
       if (draggedItemId) return;
       swipeStartX = e.touches[0].clientX;
       swipeStartY = e.touches[0].clientY;
@@ -961,8 +973,8 @@
       const diffX = endX - swipeStartX;
       const diffY = endY - swipeStartY;
 
-      // 수평 이동 거리가 수직 이동보다 크고 45px 이상 움직였을 때만 반응
-      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 45) {
+      // 수평 이동이 크고 50px 이상 밀었을 때 작동
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
         if (diffX < 0) {
           changeMonth(1); // 왼쪽으로 밀면 다음 달
         } else {
