@@ -52,9 +52,9 @@
       position: fixed;
       pointer-events: none;
       z-index: 9999;
-      opacity: 0.9;
-      transform: scale(1.05);
-      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+      opacity: 0.95;
+      transform: scale(1.06);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.22);
     }
   </style>
 </head>
@@ -66,9 +66,9 @@
       <div class="flex items-center gap-2 sm:gap-3">
         <h1 id="currentMonthYear" class="text-lg sm:text-2xl font-black tracking-tight text-palette-midnight"></h1>
         <div class="flex items-center gap-1 bg-white/70 p-1 rounded-full border border-palette-border">
-          <button onclick="changeMonth(-1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❮</button>
+          <button id="prevMonthBtn" onclick="changeMonth(-1)" ondragover="handleMonthBtnDragOver(event, -1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❮</button>
           <button onclick="goToday()" class="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold hover:bg-white transition">오늘</button>
-          <button onclick="changeMonth(1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❯</button>
+          <button id="nextMonthBtn" onclick="changeMonth(1)" ondragover="handleMonthBtnDragOver(event, 1)" class="w-6 h-6 rounded-full hover:bg-white flex items-center justify-center text-xs font-bold transition">❯</button>
         </div>
       </div>
 
@@ -104,7 +104,7 @@
 
   <!-- 메인 캘린더 영역 -->
   <main class="max-w-md md:max-w-5xl lg:max-w-7xl mx-auto px-1 sm:px-6 pt-2 sm:pt-4 space-y-4">
-    <div class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden">
+    <div id="calendarSwipeArea" class="bg-white border border-palette-border sm:rounded-[28px] shadow-sm overflow-hidden touch-pan-y">
       <div class="grid grid-cols-7 text-center py-2 border-b border-palette-border text-[11px] sm:text-xs font-black">
         <div class="text-palette-rosewood">일</div>
         <div class="text-palette-midnight">월</div>
@@ -329,6 +329,11 @@
     let draggedItemId = null;
     let touchGhost = null;
     let currentDropTarget = null;
+    let monthSwitchTimer = null;
+
+    // 모바일 캘린더 스와이프 제스처 변수
+    let swipeStartX = 0;
+    let swipeStartY = 0;
 
     // 양력 고정 공휴일
     const HOLIDAYS_SOLAR = {
@@ -342,7 +347,7 @@
       '12-25': '성탄절'
     };
 
-    // 연도별 음력 명절, 대체공휴일 및 선거일
+    // 연도별 실제 법정 공휴일 (2026년 9월 28일 평일 교정 완료)
     const SPECIAL_HOLIDAYS = {
       // 2025년
       '2025-01-28': '설날연휴', '2025-01-29': '설날', '2025-01-30': '설날연휴',
@@ -815,6 +820,7 @@
       }
     }
 
+    // 마우스 드래그 이벤트
     function handleDragStart(e, id) {
       e.stopPropagation();
       draggedItemId = id;
@@ -851,7 +857,20 @@
       }
     }
 
+    // PC에서 드래그 중 상단 화살표 버튼에 올렸을 때 달 넘기기
+    function handleMonthBtnDragOver(e, delta) {
+      e.preventDefault();
+      if (!monthSwitchTimer) {
+        monthSwitchTimer = setTimeout(() => {
+          changeMonth(delta);
+          monthSwitchTimer = null;
+        }, 500);
+      }
+    }
+
+    // 모바일 터치 드래그 & 가장자리 이동으로 다른 달 넘기기
     function handleTouchStart(e, id) {
+      e.stopPropagation();
       const touch = e.touches[0];
       draggedItemId = id;
 
@@ -870,6 +889,29 @@
       touchGhost.style.left = `${touch.clientX - 20}px`;
       touchGhost.style.top = `${touch.clientY - 20}px`;
 
+      // 화면 좌우 끝(25px 이내)으로 드래그 시 자동으로 이전 달/다음 달 넘김
+      const screenW = window.innerWidth;
+      if (touch.clientX < 25) {
+        if (!monthSwitchTimer) {
+          monthSwitchTimer = setTimeout(() => {
+            changeMonth(-1);
+            monthSwitchTimer = null;
+          }, 600);
+        }
+      } else if (touch.clientX > screenW - 25) {
+        if (!monthSwitchTimer) {
+          monthSwitchTimer = setTimeout(() => {
+            changeMonth(1);
+            monthSwitchTimer = null;
+          }, 600);
+        }
+      } else {
+        if (monthSwitchTimer) {
+          clearTimeout(monthSwitchTimer);
+          monthSwitchTimer = null;
+        }
+      }
+
       const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
       const dropCell = elemBelow ? elemBelow.closest('[data-calendar-date]') : null;
 
@@ -884,6 +926,10 @@
     }
 
     function handleTouchEnd(e) {
+      if (monthSwitchTimer) {
+        clearTimeout(monthSwitchTimer);
+        monthSwitchTimer = null;
+      }
       if (touchGhost) {
         touchGhost.remove();
         touchGhost = null;
@@ -898,6 +944,32 @@
       }
       draggedItemId = null;
     }
+
+    // 💡 모바일 캘린더 화면 좌우 스와이프 제스처 (달 넘기기)
+    const swipeArea = document.getElementById('calendarSwipeArea');
+    swipeArea.addEventListener('touchstart', (e) => {
+      // 드래그 중이 아닐 때만 스와이프 시작 감지
+      if (draggedItemId) return;
+      swipeStartX = e.touches[0].clientX;
+      swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    swipeArea.addEventListener('touchend', (e) => {
+      if (draggedItemId) return;
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const diffX = endX - swipeStartX;
+      const diffY = endY - swipeStartY;
+
+      // 수평 이동 거리가 수직 이동보다 크고 45px 이상 움직였을 때만 반응
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 45) {
+        if (diffX < 0) {
+          changeMonth(1); // 왼쪽으로 밀면 다음 달
+        } else {
+          changeMonth(-1); // 오른쪽으로 밀면 이전 달
+        }
+      }
+    }, { passive: true });
 
     function getBarColor(item) {
       if (item.category === '원고마감') {
@@ -1108,7 +1180,7 @@
                   ${prodAmt === 0 && cashAmt === 0 ? `<div class="text-xs font-bold text-palette-muted">0원</div>` : ''}
                 </div>
                 ${cashAmt > 0 ? `
-                  <button onclick="togglePaidStatus(${item.id}, ${isPaid}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black ${isPaid ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood'}">
+                  <button onclick="togglePaidStatus(${item.id},${isPaid}, event)" class="px-2 py-0.5 rounded-lg text-[9px] font-black ${isPaid ? 'bg-palette-sage text-white' : 'bg-palette-blush text-palette-rosewood'}">
                     ${isPaid ? '입금완료' : '입금대기'}
                   </button>
                 ` : ''}
